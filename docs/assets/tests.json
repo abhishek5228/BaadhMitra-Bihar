@@ -1,0 +1,423 @@
+{
+ "passed": 66,
+ "failed": 0,
+ "total": 66,
+ "files": [
+  {
+   "file": "gov.test.ts",
+   "tests": [
+    {
+     "suite": "dialect vocabulary (best effort, needs native-speaker review)",
+     "title": "reads Bhojpuri/Maithili distress words",
+     "status": "passed",
+     "ms": 7.0
+    },
+    {
+     "suite": "dismissed incidents",
+     "title": "score is zero while dismissed",
+     "status": "passed",
+     "ms": 0.8
+    },
+    {
+     "suite": "dismissed incidents",
+     "title": "a new independent reporter re-opens it",
+     "status": "passed",
+     "ms": 0.3
+    },
+    {
+     "suite": "dismissed incidents",
+     "title": "the same reporter repeating does not",
+     "status": "passed",
+     "ms": 0.3
+    },
+    {
+     "suite": "villages",
+     "title": "empty index finds nothing",
+     "status": "passed",
+     "ms": 0.4
+    },
+    {
+     "suite": "villages",
+     "title": "needs a capital or locator, so ordinary words are skipped",
+     "status": "passed",
+     "ms": 1.1
+    },
+    {
+     "suite": "villages",
+     "title": "picks the closest namesake and flags a guess",
+     "status": "passed",
+     "ms": 0.3
+    },
+    {
+     "suite": "gauge feed",
+     "title": "drops implausible readings",
+     "status": "passed",
+     "ms": 0.3
+    },
+    {
+     "suite": "gauge feed",
+     "title": "accepts seconds or ms timestamps and flags stale",
+     "status": "passed",
+     "ms": 0.4
+    },
+    {
+     "suite": "whatsapp webhook",
+     "title": "verifies signature and rejects wrong or missing",
+     "status": "passed",
+     "ms": 0.9
+    },
+    {
+     "suite": "whatsapp webhook",
+     "title": "flattens messages",
+     "status": "passed",
+     "ms": 0.9
+    },
+    {
+     "suite": "whatsapp webhook",
+     "title": "tolerates junk",
+     "status": "passed",
+     "ms": 0.1
+    },
+    {
+     "suite": "citizen report page",
+     "title": "form fields become a sentence the extractor reads correctly",
+     "status": "passed",
+     "ms": 3.4
+    },
+    {
+     "suite": "citizen report page",
+     "title": "keeps an unsent report and delivers it once the network is back",
+     "status": "passed",
+     "ms": 1.2
+    },
+    {
+     "suite": "overdue clock and response metrics",
+     "title": "urgent incidents get half the time before they are overdue",
+     "status": "passed",
+     "ms": 2.9
+    },
+    {
+     "suite": "overdue clock and response metrics",
+     "title": "an assigned incident goes overdue when the team is silent, and a field update resets it",
+     "status": "passed",
+     "ms": 0.8
+    },
+    {
+     "suite": "overdue clock and response metrics",
+     "title": "resolved or dismissed incidents are never overdue",
+     "status": "passed",
+     "ms": 0.1
+    },
+    {
+     "suite": "overdue clock and response metrics",
+     "title": "metrics use only recorded times and the latest verdict per incident",
+     "status": "passed",
+     "ms": 1.1
+    }
+   ]
+  },
+  {
+   "file": "pipeline.test.ts",
+   "tests": [
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "accepts a report, redacts PII, and builds a ranked incident",
+     "status": "passed",
+     "ms": 13.9
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "rate-limits one sender but not others",
+     "status": "passed",
+     "ms": 5.6
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "treats an identical resend as a duplicate and counts a repeat sender once",
+     "status": "passed",
+     "ms": 7.3
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "keeps unplaceable reports for a human instead of dropping them",
+     "status": "passed",
+     "ms": 2.3
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "uses a phone GPS pin over the text, and rejects pins outside Bihar",
+     "status": "passed",
+     "ms": 1.9
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "assign lowers the score; resolve removes it from the queue",
+     "status": "passed",
+     "ms": 2.0
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "alerts the ops topic once when an incident first crosses priority 75",
+     "status": "passed",
+     "ms": 2.0
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "rejects bad input",
+     "status": "passed",
+     "ms": 0.5
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "enforces roles and writes an audit trail",
+     "status": "passed",
+     "ms": 1.4
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "dismissed incidents leave the queue and a new independent report re-opens them",
+     "status": "passed",
+     "ms": 1.6
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "field team flow: ping, see only own incident, report progress, close it",
+     "status": "passed",
+     "ms": 10.8
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "a team that finds nobody hands the incident back to the queue, flagged for review",
+     "status": "passed",
+     "ms": 1.8
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "staff roles cannot use field routes, and field teams cannot use staff routes",
+     "status": "passed",
+     "ms": 0.9
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "overdue sweep notifies once per level and restarts after a change",
+     "status": "passed",
+     "ms": 18.1
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "records dispatcher feedback and reports response times and agreement",
+     "status": "passed",
+     "ms": 2.4
+    }
+   ]
+  },
+  {
+   "file": "shared.test.ts",
+   "tests": [
+    {
+     "suite": "geo",
+     "title": "round-trips a Patna point to within one cell",
+     "status": "passed",
+     "ms": 1.8
+    },
+    {
+     "suite": "geo",
+     "title": "matches the reference geohash for a well known point",
+     "status": "passed",
+     "ms": 0.3
+    },
+    {
+     "suite": "geo",
+     "title": "knows what is inside Bihar",
+     "status": "passed",
+     "ms": 0.3
+    },
+    {
+     "suite": "gazetteer",
+     "title": "finds Hindi, Hinglish and English place names",
+     "status": "passed",
+     "ms": 2.3
+    },
+    {
+     "suite": "gazetteer",
+     "title": "does not match a short name inside another word",
+     "status": "passed",
+     "ms": 0.2
+    },
+    {
+     "suite": "gazetteer",
+     "title": "does not mistake common Hindi words for place names",
+     "status": "passed",
+     "ms": 0.7
+    },
+    {
+     "suite": "gazetteer",
+     "title": "converts Devanagari digits",
+     "status": "passed",
+     "ms": 0.3
+    },
+    {
+     "suite": "redact",
+     "title": "removes phone, aadhaar-like, upi and email",
+     "status": "passed",
+     "ms": 1.1
+    },
+    {
+     "suite": "redact",
+     "title": "keeps normal text",
+     "status": "passed",
+     "ms": 0.3
+    },
+    {
+     "suite": "rule extractor",
+     "title": "reads a Hindi message",
+     "status": "passed",
+     "ms": 2.7
+    },
+    {
+     "suite": "rule extractor",
+     "title": "reads Hinglish",
+     "status": "passed",
+     "ms": 2.0
+    },
+    {
+     "suite": "rule extractor",
+     "title": "gives low confidence to vague text",
+     "status": "passed",
+     "ms": 0.4
+    },
+    {
+     "suite": "rule extractor",
+     "title": "caps confidence",
+     "status": "passed",
+     "ms": 0.5
+    },
+    {
+     "suite": "llm output validation",
+     "title": "accepts a good object and drops unknown needs",
+     "status": "passed",
+     "ms": 0.8
+    },
+    {
+     "suite": "llm output validation",
+     "title": "rejects out-of-range or malformed values",
+     "status": "passed",
+     "ms": 0.2
+    },
+    {
+     "suite": "llm output validation",
+     "title": "extracts JSON wrapped in prose or fences",
+     "status": "passed",
+     "ms": 0.3
+    },
+    {
+     "suite": "llm output validation",
+     "title": "neutralises tag break-out in the prompt",
+     "status": "passed",
+     "ms": 0.2
+    },
+    {
+     "suite": "incident merge and score",
+     "title": "counts one sender once but keeps every raw report",
+     "status": "passed",
+     "ms": 0.7
+    },
+    {
+     "suite": "incident merge and score",
+     "title": "scores more reporters higher",
+     "status": "passed",
+     "ms": 0.4
+    },
+    {
+     "suite": "incident merge and score",
+     "title": "lowers score once assigned, zero once resolved, re-opens on new report",
+     "status": "passed",
+     "ms": 0.3
+    },
+    {
+     "suite": "incident merge and score",
+     "title": "decays stale incidents",
+     "status": "passed",
+     "ms": 0.1
+    },
+    {
+     "suite": "incident merge and score",
+     "title": "flags low-confidence singletons for review but not corroborated ones",
+     "status": "passed",
+     "ms": 0.4
+    }
+   ]
+  },
+  {
+   "file": "stack.test.ts",
+   "tests": [
+    {
+     "suite": "infrastructure guarantees",
+     "title": "has a dead-letter queue wired with 3 receives",
+     "status": "passed",
+     "ms": 24.1
+    },
+    {
+     "suite": "infrastructure guarantees",
+     "title": "table is on-demand, has TTL and point-in-time recovery, and survives stack deletion",
+     "status": "passed",
+     "ms": 11.4
+    },
+    {
+     "suite": "infrastructure guarantees",
+     "title": "extractor uses partial batch responses and capped concurrency",
+     "status": "passed",
+     "ms": 8.9
+    },
+    {
+     "suite": "infrastructure guarantees",
+     "title": "only citizen intake and the signed WhatsApp webhook are public; staff routes need Cognito",
+     "status": "passed",
+     "ms": 3.2
+    },
+    {
+     "suite": "infrastructure guarantees",
+     "title": "has a staff user pool with no self sign-up, 12+ char passwords and four role groups",
+     "status": "passed",
+     "ms": 11.6
+    },
+    {
+     "suite": "infrastructure guarantees",
+     "title": "sweeps for overdue incidents every 5 minutes",
+     "status": "passed",
+     "ms": 10.3
+    },
+    {
+     "suite": "infrastructure guarantees",
+     "title": "keeps WhatsApp credentials in Secrets Manager, not in Lambda env values",
+     "status": "passed",
+     "ms": 0.9
+    },
+    {
+     "suite": "infrastructure guarantees",
+     "title": "all buckets block public access and require TLS",
+     "status": "passed",
+     "ms": 1.5
+    },
+    {
+     "suite": "infrastructure guarantees",
+     "title": "raises alarms for the DLQ, queue age, extractor and WhatsApp errors",
+     "status": "passed",
+     "ms": 8.6
+    },
+    {
+     "suite": "infrastructure guarantees",
+     "title": "listens for finished Transcribe jobs and polls gauges on a schedule",
+     "status": "passed",
+     "ms": 12.5
+    },
+    {
+     "suite": "opt-in edge protection",
+     "title": "adds a WAF only when asked",
+     "status": "passed",
+     "ms": 919.9
+    }
+   ]
+  }
+ ]
+}

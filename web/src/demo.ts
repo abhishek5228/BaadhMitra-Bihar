@@ -18,7 +18,7 @@ const DEMO_TEAMS: [string, number, number][] = [
 ]
 
 // Invented example messages (no real people). Several senders per area show clustering.
-const SEED: [string, string][] = [
+export const SEED: [string, string][] = [
   ['सुपौल में पानी कमर तक है, २० लोग फंसे हैं, बच्चे और बुजुर्ग भी, नाव चाहिए और खाना', 'a1'],
   ['Supaul ke gaon me paani kamar tak, 15 log, naav bhej dijiye', 'a2'],
   ['Supaul me bahut paani hai, ghar doob raha hai, bachche chhat par', 'a3'],
@@ -36,7 +36,7 @@ const SEED: [string, string][] = [
   ['help', 'j1'],
 ]
 
-const SURGE: string[] = [
+export const SURGE: string[] = [
   'Manihari me paani chhat par, 18 log, naav chahiye, bachche aur bujurg',
   'Katihar ke paas gaon doob gaya, 40 log phanse hain, boat bhejiye',
   'Supaul me paani aur badh gaya, 30 log, khana aur dawai chahiye',

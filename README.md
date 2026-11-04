@@ -2,8 +2,10 @@
 
 <img src="docs/assets/hero.svg" alt="BaadhMitra animated banner: rain, rising water, rescue boat and incident beacons" width="100%"/>
 
+# BaadhMitra · बाढ़मित्र
+
 **Serverless flood-rescue triage for Bihar, built on AWS.**
-Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicated rescue queue on a live 3D map, plus early river warnings in Hindi voice.
+Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicated rescue queue on a live 3D map. Rescue crews get their own phone page, and nothing waits unnoticed.
 
 [![CI](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml/badge.svg)](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml)
 ![tests](https://img.shields.io/badge/tests-66%20passing-2fbf71)
@@ -11,7 +13,7 @@ Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicat
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![three.js](https://img.shields.io/badge/3D-three.js-black)
 
-### [Open the 3D demo](https://dr2l39p60xv7s.cloudfront.net/index.html?demo=1) · [Citizen report page](https://dr2l39p60xv7s.cloudfront.net/report.html) · [Staff dashboard (login)](https://dr2l39p60xv7s.cloudfront.net/)
+### [Open the 3D demo](https://dr2l39p60xv7s.cloudfront.net/index.html?demo=1) · [Citizen report page](https://dr2l39p60xv7s.cloudfront.net/report.html) · [Crew page](https://dr2l39p60xv7s.cloudfront.net/field.html) · [Staff dashboard (login)](https://dr2l39p60xv7s.cloudfront.net/)
 
 <sub>Live links point to the author's personal AWS test deployment and may be offline. The demo runs entirely in your browser with invented messages; no real people or data.</sub>
 
@@ -19,13 +21,33 @@ Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicat
 
 > **Status:** working prototype, deployed by its author to a personal AWS account for testing. It has **not** been used in a real flood, no agency has endorsed it, and extraction accuracy on real messages is unmeasured. River levels are simulated (and labelled `sim`) until an official feed is connected. The path to a real pilot is in [`docs/PILOT.md`](docs/PILOT.md).
 
+## Contents
+
+[The problem](#the-problem) · [See it](#see-it) · [How one message travels](#how-one-message-travels) · [Use cases](#use-cases) · [Under the hood, with graphs](#under-the-hood-with-graphs) · [Roles](#who-can-do-what) · [Architecture](#architecture) · [Design decisions](#design-decisions-worth-knowing) · [Tests](#tests-and-evaluation) · [Run and deploy](#run-the-dashboard-locally-no-aws-needed) · [API](#api) · [Docs](#docs-for-a-real-pilot) · [Limits](#known-limits-and-next-steps)
+
 ---
+
+## The problem
+
+Every monsoon the Kosi, Gandak and Ganga basins flood. Control rooms get a flood of calls and WhatsApp voice notes ("paani ghar mein ghus gaya, bachche chhat pe hain") that are unstructured, duplicated, and often have no coordinates. Boats go to whoever shouts loudest, not to whoever is in the most danger, and once a boat is sent nobody is sure whether the request is still open.
+
+BaadhMitra tries to fix four things: **understanding** messy messages, **ranking** them fairly, **dispatching** with a visible clock, and **learning** from the dispatchers' own corrections.
 
 ## See it
 
 <p align="center">
+  <img src="docs/assets/orbit.gif" alt="Animated: the 3D Bihar map being rotated, showing rivers, flood water, incident beacons and the rescue queue" width="82%"/>
+  <br/><sub><b>Drag to orbit.</b> Real Three.js terrain, rivers, flood plane and incident beacons, driven by the same shared code as the Lambdas (demo mode, invented data).</sub>
+</p>
+
+<p align="center">
   <img src="docs/assets/surge.gif" alt="Animated: a monsoon surge raises the water on the 3D Bihar map, gauges turn red and the rescue queue re-ranks" width="92%"/>
   <br/><sub><b>Monsoon surge:</b> gauges climb, the flood plane rises, Hindi alerts fire, and the queue re-ranks itself.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/assets/dispatch.gif" alt="Animated: a dispatcher opens the top incident and dispatches a boat team" width="82%"/>
+  <br/><sub><b>Dispatch in two clicks:</b> open the top incident, see the evidence, send a boat team. The boat sails to the beacon.</sub>
 </p>
 
 <table>
@@ -34,15 +56,12 @@ Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicat
     <td width="50%"><img src="docs/assets/dash-surge.png" alt="Dashboard during a surge with danger gauges and alerts"/><br/><sub><b>Early warning.</b> Gauges in danger, Hindi voice alerts, and grey "stale" cards when a source stops updating.</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/assets/audit.png" alt="Activity log showing who assigned or dismissed which incident"/><br/><sub><b>Accountability.</b> Every assign, resolve, dismiss and replay is logged: who, what, when.</sub></td>
-    <td width="50%"><img src="docs/assets/login.png" alt="Staff sign-in with Cognito"/><br/><sub><b>Role-based login.</b> Cognito, no self sign-up. Viewer, control room and district officer see different actions.</sub></td>
-  </tr>
-</table>
-
-<table>
-  <tr>
     <td width="50%"><img src="docs/assets/dash-teams.png" alt="Dashboard showing overdue badges, a team marker on the map and the dispatch panel"/><br/><sub><b>Overdue clock + live crews.</b> Amber and red badges for waiting incidents; blue markers for crews that share their location.</sub></td>
     <td width="50%"><img src="docs/assets/report.png" alt="Response time and accuracy report"/><br/><sub><b>Response-time report.</b> Time to assign and resolve, who closed it, and how often dispatchers agreed with the system.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/assets/audit.png" alt="Activity log showing who assigned or dismissed which incident"/><br/><sub><b>Accountability.</b> Every assign, resolve, dismiss and replay is logged: who, what, when.</sub></td>
+    <td width="50%"><img src="docs/assets/login.png" alt="Staff sign-in with Cognito"/><br/><sub><b>Role-based login.</b> Cognito, no self sign-up.</sub></td>
   </tr>
 </table>
 
@@ -69,27 +88,102 @@ Try it: [`/report.html`](https://dr2l39p60xv7s.cloudfront.net/report.html)
   </tr>
 </table>
 
----
+## How one message travels
 
-## What it does
+<p align="center"><img src="docs/assets/flow.svg" alt="Animated isometric pipeline: citizen, API Gateway, SQS, extractor, DynamoDB, dashboard, crew phone, with message packets moving along it" width="100%"/></p>
 
-| | |
-| --- | --- |
-| 🗣️ **Understands people** | Amazon Transcribe for voice, Amazon Bedrock (Claude) to extract place, depth, people at risk, needs and vulnerable people. A rule-based Hindi/Hinglish extractor (with a best-effort Bhojpuri/Maithili word list) takes over if the model is down. |
-| 🧩 **Merges and ranks** | Reports from the same area merge into one incident. Priority weighs severity, **independent** reporters, people at risk, children/elderly/medical need. One phone repeating itself counts once. |
-| 🗺️ **Shows it in 3D** | Three.js Bihar terrain, rivers, a flood plane that rises with the gauges, rain, incident beacons and boats that sail to assigned incidents. |
-| 📲 **Takes reports anywhere** | Offline-first phone page, voice notes, location pin, and a signed WhatsApp webhook (Meta approval needed). |
-| 🚤 **Closes the loop with rescue crews** | Crews get their own phone page: assigned incident, navigation link, one-tap progress (on the way / arrived / done / nobody found) that survives bad signal, and optional live location shown on the 3D map. A crew's "done" is what resolves an incident. |
-| ⏰ **Never lets a request sit** | Overdue clock on every incident (no team assigned, or a team gone silent). Badges on the queue, and an alert to the ops topic once per level. |
-| 📊 **Measures itself** | Dispatchers mark whether the system read an incident correctly. A report shows time to assign, time to resolve, who closed what, and the dispatchers' agreement rate, so accuracy comes from real use instead of guesses. |
-| 🔐 **Protects the control room** | Cognito roles, server-side checks, append-only audit log, per-sender rate limit, API throttles, optional WAF. |
-| 🌊 **Warns early, honestly** | Gauge poller with Hindi voice from Amazon Polly. With a real feed configured, simulation is never used; stale readings are greyed out and never alert. |
+| Step | What happens | Why it is built that way |
+| --- | --- | --- |
+| 1. Arrive | Text from the phone page, a voice note (S3 then Transcribe), or a signed WhatsApp webhook | Three doors, one pipeline; the phone page works offline |
+| 2. Guard | Per-sender limit (30/hour), API throttles, optional WAF, phone numbers and ID-like numbers redacted | A panicked family cannot flood the queue; personal data is gone before storage |
+| 3. Queue | SQS with partial-batch retry and a dead-letter queue | A burst of messages is buffered, a bad one never blocks the rest |
+| 4. Extract | Bedrock reads place, depth, people, needs, vulnerable people; the rule extractor takes over if the model is down | The system degrades instead of stopping |
+| 5. Merge and score | Reports in the same area become one incident with a 0 to 100 priority | One village crying twenty times is one rescue |
+| 6. Show | 3D map, ranked queue, evidence panel, overdue chips | A dispatcher decides in seconds, not minutes |
+| 7. Dispatch | A person assigns a crew; the crew gets it on their phone | A human stays in charge |
+| 8. Close the loop | Crew taps on the way / arrived / done; silent crews and unassigned incidents trigger the overdue clock | Nothing sits forgotten |
 
----
+## Use cases
 
-## The problem
+Each case below runs through code that exists in this repo and is covered by a test. Messages are invented examples, not real reports.
 
-Every monsoon the Kosi, Gandak and Ganga basins flood. Control rooms get a flood of calls and WhatsApp voice notes ("paani ghar mein ghus gaya, bachche chhat pe hain") that are unstructured, duplicated, and often have no coordinates. Boats go to whoever shouts loudest, not to whoever is in the most danger.
+### 1. A family on a roof sends a message
+
+A message goes in; structured facts come out. This table is the real output of the rule extractor (`npm run docs:data` regenerates it). With Bedrock enabled the model does the reading and these rules are the safety net.
+
+| Message | Place | People | Depth | Needs | Vulnerable | Severity |
+| --- | --- | --- | --- | --- | --- | --- |
+| सुपौल में पानी कमर तक है, 20 लोग फंसे हैं, बच्चे और बुजुर्ग भी, नाव चाहिए और खाना | Supaul | 20 | 100 cm | boat, food | yes | 5 |
+| Kursela me paani chhat par aa gaya, 6 log hain, ek garbhwati mahila, dawai chahiye | Kursela | 6 | 300 cm | medical | yes | 5 |
+| Naugachia: water at chest level, 12 people on the roof, need boat and drinking water | Naugachia | 12 | 300 cm | boat, water | no | 5 |
+| खगड़िया में बाढ़ का पानी घर में घुस गया, बच्चे भूखे हैं, राशन चाहिए | Khagaria | - | - | food | yes | 3 |
+| मचान पर चढ़ल बानी, गरभवती मेहरारू बा, अन्न नइखे, पानी में डूबल घर | **unplaced** (goes to a human list) | - | 200 cm | food | yes | 5 |
+| paani aa gaya ghar me, call [phone] | **unplaced** (goes to a human list) | - | - | - | no | 2 |
+
+Two rows are deliberately honest. The Bhojpuri message gives **no place**, so it is not guessed onto the map; it lands in the *unplaced* list for a human. And the last message had a phone number, which was **redacted** before anything was stored.
+
+### 2. Twenty people from one village, one incident
+
+During a flood the same place is reported many times. The dashboard shows one incident per area, so dispatchers read 15 lines instead of 25. Independent reporters raise priority, but one phone repeating itself counts once.
+
+<p align="center"><img src="docs/assets/g-dedupe.png" alt="Graph: 25 reports collapse into 15 incidents" width="78%"/></p>
+
+### 3. The queue decides who goes first
+
+The ranking weighs severity first, then independent reporters, number of people, children, elderly, medical need. A boat request does not change the score (it is a need, not a danger). Once a crew is assigned the incident drops out of the urgent list.
+
+### 4. A dispatcher sends a boat team
+
+Open the top incident, read the evidence, choose a team, press dispatch. The action is checked on the server for the dispatcher's role and written to the audit log. See the dispatch GIF above.
+
+### 5. The crew works from a phone with bad signal
+
+The crew signs in on `/field.html`, sees only its own incident, taps **on the way**, **arrived**, **done**. Taps queue on the phone if the network drops and replay later. If they tap **nobody found**, the incident returns to the queue flagged for a human instead of closing silently.
+
+### 6. Nobody is allowed to wait forever
+
+An incident with no team, or a team that went quiet, turns amber and then red, and a single alert goes to the ops topic when it turns red (not every five minutes).
+
+<p align="center"><img src="docs/assets/g-sla.png" alt="Step graph of the overdue clock for urgent, normal and silent-team incidents" width="78%"/></p>
+
+### 7. A false report is dismissed, and a new one reopens it
+
+A dispatcher can dismiss a duplicate or false incident. If a new, independent person reports the same place afterwards, the incident reopens automatically with a fresh clock instead of staying buried.
+
+### 8. A river approaches its danger mark
+
+The gauge poller compares levels with the danger mark, voices a Hindi alert with Amazon Polly, and notifies via SNS. With a real feed configured the simulator is never used, and a source that stops updating is greyed out instead of alerting on old numbers.
+
+<p align="center"><img src="docs/assets/g-gauges.png" alt="Simulated 48 hour gauge readings relative to the danger mark" width="82%"/></p>
+
+### 9. The control room learns whether the system is right
+
+After handling an incident a dispatcher can mark it right or wrong (and which field was wrong). The report page shows time to assign, time to resolve, who closed it and the agreement rate. That is how real accuracy gets measured in a pilot, instead of guessed.
+
+## Under the hood, with graphs
+
+### Priority score
+
+The score is computed by `shared/score.ts`. These curves are produced by calling that real function with one input changed at a time.
+
+<p align="center"><img src="docs/assets/g-score.png" alt="Four panels: score versus reporters, people at risk, severity, and vulnerability flags" width="92%"/></p>
+
+Read it as: severity moves the score the most; more independent reporters help but flatten after a handful (so a crowd cannot push a minor incident to the top); the number of people rises on a log scale; vulnerable people and medical need add points; a boat request alone adds none; assigning a crew lowers priority because someone is already on it. Scores also decay slowly with age so old unreviewed reports sink.
+
+### Overdue clock
+
+Thresholds live in `shared/sla.ts`: open incidents warn at 15 minutes and breach at 30 if the score is 75 or more (30 and 60 otherwise); an assigned crew that stays silent warns at 60 and breaches at 120. A sweep Lambda runs every five minutes, and a field called `esc` makes sure each breach alerts once. These are starting values to agree with a control room, not official standards.
+
+## Who can do what
+
+| Role | Sees | Can do |
+| --- | --- | --- |
+| `viewer` | queue, map, gauges, crew positions, metrics | nothing that changes data |
+| `control_room` | everything a viewer sees | assign, resolve, dismiss, give feedback |
+| `district_officer` | everything | also replay the dead-letter queue, read the audit log, export feedback |
+| `field_team` | only its own assigned incidents | send position, tap progress |
+
+Enforced by the API on every call, not just hidden in the UI. Accounts are created by an administrator; there is no self sign-up.
 
 ## Architecture
 
@@ -114,8 +208,10 @@ flowchart LR
   G --> POLLY[Amazon Polly<br/>Hindi voice]
   G --> SNS[SNS alerts<br/>SMS / email]
   EX -->|priority >= 75| SNS
+  EB2[EventBridge 5 min] --> SLA[Lambda SLA sweep] --> SNS
   WA[WhatsApp Cloud API] -->|signed webhook| WAL[Lambda whatsapp] --> Q
   DASH[Dispatcher 3D dashboard<br/>CloudFront + S3] -->|Cognito JWT + roles| APIGW
+  CREW[Crew phone page] -->|Cognito JWT, field_team| APIGW
   APIGW --> API[Lambda api]
   API --> DDB
   CW[CloudWatch dashboard + alarms] -.- EX
@@ -135,8 +231,31 @@ flowchart LR
 | Human in the loop | The system ranks and recommends. A dispatcher assigns teams. A person can dismiss a false or duplicate incident; a new independent report re-opens it. |
 | Real vs simulated data | With a real gauge feed configured the simulator is never used. Old readings are greyed out, raise no alerts, and trigger an alarm. |
 | Access | Cognito with no self sign-up and role groups, enforced by the API on every call, plus an append-only audit log. |
-| Cost control | On-demand DynamoDB, ARM Lambdas, extractor concurrency capped at 5, per-route API throttles. |
-| Offline resilience | The gazetteer works with no network call, and the dashboard runs end to end in a demo mode with the same shared code as the Lambdas. |
+| Cost control | On-demand DynamoDB, ARM Lambdas, extractor concurrency capped at 5, per-route API throttles. Nothing idles when there is no flood. |
+| Offline resilience | The gazetteer works with no network call, the phone pages queue their taps, and the dashboard runs end to end in a demo mode with the same shared code as the Lambdas. |
+
+## Tests and evaluation
+
+<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 66 passing tests by area" width="70%"/></p>
+
+```bash
+npm run typecheck && npm test      # 66 tests: core logic, the Lambda pipeline against a fake AWS, roles and audit, WhatsApp signatures, feeds, offline queue, CDK guarantees
+npm run eval                       # extractor benchmark (add LLM=1 MODEL=<id> to score Bedrock)
+npx cdk synth                      # validates the CloudFormation template
+npm run loadtest -- <api> 200 20 --yes   # load test the public endpoint (use a staging stack)
+npm run docs:data && npm run docs:graphs # regenerate the numbers and graphs in this README
+```
+
+| Area | Tests | What they prove |
+| --- | --- | --- |
+| Core logic (`shared.test.ts`) | 22 | extraction, redaction, scoring, merging, geohash |
+| Roles, SLA, feeds, WhatsApp, offline (`gov.test.ts`) | 18 | dialect words, dismissal, village lookup, signatures, offline queue, overdue and metrics maths |
+| Lambda pipeline (`pipeline.test.ts`) | 15 | the whole flow on a fake AWS: field team flow, role isolation, overdue sweep, rate limit, audit |
+| Infrastructure (`stack.test.ts`) | 11 | four role groups, only five public methods, five-minute sweep, WAF opt-in, alarms |
+
+What the tests do **not** cover: a live AWS account, real WhatsApp traffic, real phones' GPS, or any real flood message. The pipeline tests run on fakes.
+
+An honest note on the benchmark: `eval/labeled.json` is a starter set of 41 messages written by the project author alongside the rule extractor. It scores 100% on place, depth, people, vulnerable and severity and 97.4% on needs (precision, recall and F1), so it is a regression guard, not an accuracy claim. Writing the set already exposed a real bug (the Hindi phrase "aa gaya" was being read as the city Gaya), now fixed and tested. To quote accuracy, label fresh messages you did not use while building and report per-field scores on those.
 
 ## Docs for a real pilot
 
@@ -153,12 +272,12 @@ flowchart LR
 
 ```
 shared/     code used by Lambdas, the dashboard and tests (geohash, gazetteer, redaction,
-            extractor, scoring, alert wording, gauge simulator)
-backend/    Lambda handlers: ingest, voice, extract, api, gauge, whatsapp (+ lib: intake, auth, feed, wa)
+            extractor, scoring, SLA and metrics, alert wording, gauge simulator)
+backend/    Lambda handlers: ingest, voice, extract, api, gauge, whatsapp, sla (+ lib: intake, auth, feed, wa)
 infra/      AWS CDK stack (TypeScript)
 web/        3D dispatcher dashboard (Three.js + Vite), offline citizen report page, rescue-crew page
-docs/       pilot plan, deploy checklist, runbook, security, privacy, WhatsApp, pitch, demo script
-scripts/    deploy, village importer, load test
+docs/       pilot plan, deploy checklist, runbook, security, privacy, WhatsApp, pitch, demo script, assets
+scripts/    deploy, village importer, load test, README data and graph generators
 eval/       labeled messages + benchmark script
 test/       unit tests and CDK assertion tests
 ```
@@ -203,17 +322,6 @@ If Bedrock access or the model id is wrong, the system keeps working on the rule
 | `GET /teams`, `GET /metrics` | Cognito, any staff role | crew positions, response-time report |
 | `POST /field/ping`, `GET /field/mine`, `POST /field/{id}/progress` | Cognito, `field_team` only | the crew's own phone |
 | `POST /admin/replay`, `GET /audit`, `GET /feedback` | Cognito, `district_officer` | redrive the dead-letter queue, activity log, labelled-feedback export |
-
-## Testing and evaluation
-
-```bash
-npm run typecheck && npm test      # 66 tests: core logic, the Lambda pipeline against a fake AWS, roles and audit, WhatsApp signatures, feeds, offline queue, CDK guarantees
-npm run eval                       # extractor benchmark (add LLM=1 MODEL=<id> to score Bedrock)
-npx cdk synth                      # validates the CloudFormation template
-npm run loadtest -- <api> 200 20 --yes   # load test the public endpoint (use a staging stack)
-```
-
-An honest note on the benchmark: `eval/labeled.json` is a starter set written by the project author alongside the rule extractor, so its near-perfect score is a regression guard, not an accuracy claim. Writing the set already exposed a real bug (the Hindi phrase "aa gaya" was being read as the city Gaya), now fixed and tested. To quote accuracy, label fresh messages you did not use while building and report per-field scores on those.
 
 ## Known limits and next steps
 

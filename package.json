@@ -13,7 +13,9 @@
     "deploy": "npm run web:build && cdk deploy --require-approval never",
     "eval": "tsx eval/run.ts",
     "villages": "tsx scripts/villages.ts",
-    "loadtest": "tsx scripts/loadtest.ts"
+    "loadtest": "tsx scripts/loadtest.ts",
+    "docs:data": "tsx scripts/docs-data.ts",
+    "docs:graphs": "python3 scripts/docs-graphs.py"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.700.0",

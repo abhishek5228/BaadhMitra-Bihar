@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 470" font-family="DejaVu Sans,Arial,sans-serif">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1220"/><stop offset="1" stop-color="#16233d"/></linearGradient>
+<filter id="sh" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="9" stdDeviation="6" flood-color="#000" flood-opacity=".55"/></filter>
+<filter id="gl"><feGaussianBlur stdDeviation="3.5"/></filter></defs>
+<rect width="1200" height="470" rx="18" fill="url(#bg)"/>
+<text x="600" y="40" text-anchor="middle" fill="#eef2f8" font-size="21" font-weight="700">One flood message, end to end</text>
+<text x="600" y="62" text-anchor="middle" fill="#9aa8bf" font-size="12.5">packets are messages moving through the real pipeline: ingest, queue, extract, score, store, show, dispatch</text>
+<line x1="-510" y1="430" x2="-410" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="-415" y1="430" x2="-315" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="-320" y1="430" x2="-220" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="-225" y1="430" x2="-125" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="-130" y1="430" x2="-30" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="-35" y1="430" x2="65" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="60" y1="430" x2="160" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="155" y1="430" x2="255" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="250" y1="430" x2="350" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="345" y1="430" x2="445" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="440" y1="430" x2="540" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="535" y1="430" x2="635" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="630" y1="430" x2="730" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="725" y1="430" x2="825" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="820" y1="430" x2="920" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="915" y1="430" x2="1015" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="1010" y1="430" x2="1110" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="1105" y1="430" x2="1205" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="1200" y1="430" x2="1300" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<line x1="1295" y1="430" x2="1395" y2="250" stroke="#1f2d48" stroke-width="1"/>
+<path id="rt" d="M95 250 L263 250 L431 250 L599 250 L767 250 L935 250 L1103 250" stroke="#27344d" stroke-width="5" fill="none" stroke-dasharray="2 9" stroke-linecap="round"/>
+<g filter="url(#sh)"><polygon points="95,198 149,224 95,250 41,224" fill="#4da3ff"/><polygon points="41,224 95,250 95,296 41,270" fill="#4da3ff" opacity=".55"/><polygon points="149,224 95,250 95,296 149,270" fill="#4da3ff" opacity=".78"/></g>
+<text x="95" y="332" text-anchor="middle" fill="#eef2f8" font-size="14" font-weight="700">Citizen</text>
+<text x="95" y="350" text-anchor="middle" fill="#9aa8bf" font-size="11">phone / WhatsApp</text>
+<g filter="url(#sh)"><polygon points="263,198 317,224 263,250 209,224" fill="#a78bfa"/><polygon points="209,224 263,250 263,296 209,270" fill="#a78bfa" opacity=".55"/><polygon points="317,224 263,250 263,296 317,270" fill="#a78bfa" opacity=".78"/></g>
+<text x="263" y="332" text-anchor="middle" fill="#eef2f8" font-size="14" font-weight="700">API Gateway</text>
+<text x="263" y="350" text-anchor="middle" fill="#9aa8bf" font-size="11">rate limit, WAF</text>
+<g filter="url(#sh)"><polygon points="431,198 485,224 431,250 377,224" fill="#f5a524"/><polygon points="377,224 431,250 431,296 377,270" fill="#f5a524" opacity=".55"/><polygon points="485,224 431,250 431,296 485,270" fill="#f5a524" opacity=".78"/></g>
+<text x="431" y="332" text-anchor="middle" fill="#eef2f8" font-size="14" font-weight="700">SQS + DLQ</text>
+<text x="431" y="350" text-anchor="middle" fill="#9aa8bf" font-size="11">never lose a report</text>
+<g filter="url(#sh)"><polygon points="599,198 653,224 599,250 545,224" fill="#2fe0b0"/><polygon points="545,224 599,250 599,296 545,270" fill="#2fe0b0" opacity=".55"/><polygon points="653,224 599,250 599,296 653,270" fill="#2fe0b0" opacity=".78"/></g>
+<text x="599" y="332" text-anchor="middle" fill="#eef2f8" font-size="14" font-weight="700">Extractor</text>
+<text x="599" y="350" text-anchor="middle" fill="#9aa8bf" font-size="11">place, people, needs</text>
+<g filter="url(#sh)"><polygon points="767,198 821,224 767,250 713,224" fill="#4da3ff"/><polygon points="713,224 767,250 767,296 713,270" fill="#4da3ff" opacity=".55"/><polygon points="821,224 767,250 767,296 821,270" fill="#4da3ff" opacity=".78"/></g>
+<text x="767" y="332" text-anchor="middle" fill="#eef2f8" font-size="14" font-weight="700">DynamoDB</text>
+<text x="767" y="350" text-anchor="middle" fill="#9aa8bf" font-size="11">incidents, audit</text>
+<g filter="url(#sh)"><polygon points="935,198 989,224 935,250 881,224" fill="#2fbf71"/><polygon points="881,224 935,250 935,296 881,270" fill="#2fbf71" opacity=".55"/><polygon points="989,224 935,250 935,296 989,270" fill="#2fbf71" opacity=".78"/></g>
+<text x="935" y="332" text-anchor="middle" fill="#eef2f8" font-size="14" font-weight="700">Dashboard</text>
+<text x="935" y="350" text-anchor="middle" fill="#9aa8bf" font-size="11">3D map, roles</text>
+<g filter="url(#sh)"><polygon points="1103,198 1157,224 1103,250 1049,224" fill="#e5484d"/><polygon points="1049,224 1103,250 1103,296 1049,270" fill="#e5484d" opacity=".55"/><polygon points="1157,224 1103,250 1103,296 1157,270" fill="#e5484d" opacity=".78"/></g>
+<text x="1103" y="332" text-anchor="middle" fill="#eef2f8" font-size="14" font-weight="700">Crew phone</text>
+<text x="1103" y="350" text-anchor="middle" fill="#9aa8bf" font-size="11">field page</text>
+<g><circle r="9" fill="#4da3ff" opacity=".55" filter="url(#gl)"/><circle r="5.5" fill="#4da3ff" stroke="#fff" stroke-width="1.5"/><animateMotion dur="14s" begin="-0.0s" repeatCount="indefinite" keyPoints="0;1" keyTimes="0;1" calcMode="linear"><mpath href="#rt"/></animateMotion></g>
+<g><circle r="9" fill="#2fe0b0" opacity=".55" filter="url(#gl)"/><circle r="5.5" fill="#2fe0b0" stroke="#fff" stroke-width="1.5"/><animateMotion dur="14s" begin="-3.5s" repeatCount="indefinite" keyPoints="0;1" keyTimes="0;1" calcMode="linear"><mpath href="#rt"/></animateMotion></g>
+<g><circle r="9" fill="#f5a524" opacity=".55" filter="url(#gl)"/><circle r="5.5" fill="#f5a524" stroke="#fff" stroke-width="1.5"/><animateMotion dur="14s" begin="-7.0s" repeatCount="indefinite" keyPoints="0;1" keyTimes="0;1" calcMode="linear"><mpath href="#rt"/></animateMotion></g>
+<g><circle r="9" fill="#e5484d" opacity=".55" filter="url(#gl)"/><circle r="5.5" fill="#e5484d" stroke="#fff" stroke-width="1.5"/><animateMotion dur="14s" begin="-10.5s" repeatCount="indefinite" keyPoints="0;1" keyTimes="0;1" calcMode="linear"><mpath href="#rt"/></animateMotion></g>
+<text x="95" y="165" text-anchor="middle" fill="#9aa8bf" font-size="10.5">1. text or voice arrives</text>
+<text x="263" y="165" text-anchor="middle" fill="#9aa8bf" font-size="10.5">2. 30/hour per sender, hashed id</text>
+<text x="431" y="165" text-anchor="middle" fill="#9aa8bf" font-size="10.5">3. buffered, retried, poison to DLQ</text>
+<text x="599" y="165" text-anchor="middle" fill="#9aa8bf" font-size="10.5">4. rules always, Bedrock if enabled</text>
+<text x="767" y="165" text-anchor="middle" fill="#9aa8bf" font-size="10.5">5. merge duplicates, optimistic lock</text>
+<text x="935" y="165" text-anchor="middle" fill="#9aa8bf" font-size="10.5">6. queue, SLA chips, audit</text>
+<text x="1103" y="165" text-anchor="middle" fill="#9aa8bf" font-size="10.5">7. progress taps, works offline</text>
+<text x="600" y="400" text-anchor="middle" fill="#9aa8bf" font-size="12">also in the loop: Transcribe (voice), Polly (read-back), SNS (overdue alerts, once), EventBridge (5-minute SLA sweep), Cognito (4 roles), CloudWatch (alarms)</text>
+<text x="600" y="425" text-anchor="middle" fill="#6f7f99" font-size="11">Region ap-southeast-2 for this deployment; every piece is serverless, nothing idles when no flood</text>
+</svg>
