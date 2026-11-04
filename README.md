@@ -1,21 +1,76 @@
-# BaadhMitra · बाढ़मित्र
+<div align="center">
 
-**Serverless flood-rescue triage for Bihar.** People in flooded villages send distress messages as Hindi, Hinglish or Maithili-flavoured text and voice notes. BaadhMitra turns that noise into one ranked rescue queue on a 3D map, and warns villages by SMS and Hindi voice when a river nears its danger mark. Built on AWS.
+<img src="docs/assets/hero.svg" alt="BaadhMitra animated banner: rain, rising water, rescue boat and incident beacons" width="100%"/>
 
-> Status: working prototype, deployed by its author to a personal AWS account for testing. The pipeline, infrastructure and dashboard are built and tested. It has not been used in a real flood, nothing here is endorsed by any agency, and extraction accuracy on real messages is unmeasured. To take it toward a government pilot, see `docs/PILOT.md` and `docs/DEPLOY-INDIA.md`. River levels run on a **simulator** until you plug in an official feed, and are always labelled `sim`.
+**Serverless flood-rescue triage for Bihar, built on AWS.**
+Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicated rescue queue on a live 3D map, plus early river warnings in Hindi voice.
+
+[![CI](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml/badge.svg)](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml)
+![tests](https://img.shields.io/badge/tests-56%20passing-2fbf71)
+![AWS](https://img.shields.io/badge/AWS-Lambda%20%C2%B7%20SQS%20%C2%B7%20DynamoDB%20%C2%B7%20Bedrock%20%C2%B7%20Cognito-ff9900)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
+![three.js](https://img.shields.io/badge/3D-three.js-black)
+
+### [Open the 3D demo](https://dr2l39p60xv7s.cloudfront.net/index.html?demo=1) · [Citizen report page](https://dr2l39p60xv7s.cloudfront.net/report.html) · [Staff dashboard (login)](https://dr2l39p60xv7s.cloudfront.net/)
+
+<sub>Live links point to the author's personal AWS test deployment and may be offline. The demo runs entirely in your browser with invented messages; no real people or data.</sub>
+
+</div>
+
+> **Status:** working prototype, deployed by its author to a personal AWS account for testing. It has **not** been used in a real flood, no agency has endorsed it, and extraction accuracy on real messages is unmeasured. River levels are simulated (and labelled `sim`) until an official feed is connected. The path to a real pilot is in [`docs/PILOT.md`](docs/PILOT.md).
+
+---
+
+## See it
+
+<p align="center">
+  <img src="docs/assets/surge.gif" alt="Animated: a monsoon surge raises the water on the 3D Bihar map, gauges turn red and the rescue queue re-ranks" width="92%"/>
+  <br/><sub><b>Monsoon surge:</b> gauges climb, the flood plane rises, Hindi alerts fire, and the queue re-ranks itself.</sub>
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/dash-detail.png" alt="3D Bihar map with ranked rescue queue and incident detail"/><br/><sub><b>Rescue queue + 3D map.</b> Twenty reports from one village are one incident, scored 0 to 100 with the evidence beside it.</sub></td>
+    <td width="50%"><img src="docs/assets/dash-surge.png" alt="Dashboard during a surge with danger gauges and alerts"/><br/><sub><b>Early warning.</b> Gauges in danger, Hindi voice alerts, and grey "stale" cards when a source stops updating.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/assets/audit.png" alt="Activity log showing who assigned or dismissed which incident"/><br/><sub><b>Accountability.</b> Every assign, resolve, dismiss and replay is logged: who, what, when.</sub></td>
+    <td width="50%"><img src="docs/assets/login.png" alt="Staff sign-in with Cognito"/><br/><sub><b>Role-based login.</b> Cognito, no self sign-up. Viewer, control room and district officer see different actions.</sub></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td width="260" align="center"><img src="docs/assets/citizen.png" alt="Hindi-first citizen report page on a phone" width="240"/></td>
+    <td valign="top">
+
+### The citizen page works with no signal
+Hindi first, big buttons, installable as a PWA. A report typed offline is saved on the phone and sent when the network returns. It never asks for a phone number, shows **112** at the top, and says plainly that a report is not a rescue guarantee.
+
+Try it: [`/report.html`](https://dr2l39p60xv7s.cloudfront.net/report.html)
+
+</td>
+  </tr>
+</table>
+
+---
+
+## What it does
+
+| | |
+| --- | --- |
+| 🗣️ **Understands people** | Amazon Transcribe for voice, Amazon Bedrock (Claude) to extract place, depth, people at risk, needs and vulnerable people. A rule-based Hindi/Hinglish extractor (with a best-effort Bhojpuri/Maithili word list) takes over if the model is down. |
+| 🧩 **Merges and ranks** | Reports from the same area merge into one incident. Priority weighs severity, **independent** reporters, people at risk, children/elderly/medical need. One phone repeating itself counts once. |
+| 🗺️ **Shows it in 3D** | Three.js Bihar terrain, rivers, a flood plane that rises with the gauges, rain, incident beacons and boats that sail to assigned incidents. |
+| 📲 **Takes reports anywhere** | Offline-first phone page, voice notes, location pin, and a signed WhatsApp webhook (Meta approval needed). |
+| 🔐 **Protects the control room** | Cognito roles, server-side checks, append-only audit log, per-sender rate limit, API throttles, optional WAF. |
+| 🌊 **Warns early, honestly** | Gauge poller with Hindi voice from Amazon Polly. With a real feed configured, simulation is never used; stale readings are greyed out and never alert. |
+
+---
 
 ## The problem
 
 Every monsoon the Kosi, Gandak and Ganga basins flood. Control rooms get a flood of calls and WhatsApp voice notes ("paani ghar mein ghus gaya, bachche chhat pe hain") that are unstructured, duplicated, and often have no coordinates. Boats go to whoever shouts loudest, not to whoever is in the most danger.
-
-## What it does
-
-1. **Takes reports** by text, voice note or location pin: a Hindi-first phone page that queues reports offline (`/report.html`, installable as a PWA), or WhatsApp (needs Meta business approval, see `docs/WHATSAPP.md`).
-2. **Understands them**: Amazon Transcribe for voice, Amazon Bedrock (Claude) to extract place, water depth, people at risk, needs and vulnerable people. A rule-based Hindi/Hinglish extractor takes over if the model is down, so the system degrades instead of failing.
-3. **Clusters and ranks**: twenty reports from one village become one incident. A priority score weighs severity, independent reporters, people at risk, vulnerable people and medical need.
-4. **Shows it in 3D**: a Bihar terrain with the rivers, a flood plane that rises with the gauges, rain, incident beacons, and boats that sail to assigned incidents.
-5. **Protects the control room**: staff sign in with Cognito (roles: viewer, control_room, district_officer), every assign/resolve/dismiss is written to an audit log, and a per-sender rate limit plus optional WAF absorb spam.
-6. **Warns early**: a scheduled poller watches river gauges and, on escalation, sends an SMS/email alert plus a Hindi voice message synthesized with Amazon Polly.
 
 ## Architecture
 
@@ -63,6 +118,17 @@ flowchart LR
 | Access | Cognito with no self sign-up and role groups, enforced by the API on every call, plus an append-only audit log. |
 | Cost control | On-demand DynamoDB, ARM Lambdas, extractor concurrency capped at 5, per-route API throttles. |
 | Offline resilience | The gazetteer works with no network call, and the dashboard runs end to end in a demo mode with the same shared code as the Lambdas. |
+
+## Docs for a real pilot
+
+| Doc | For |
+| --- | --- |
+| [`PILOT.md`](docs/PILOT.md) | one-district shadow pilot: scope, what the department provides, what to measure, risks |
+| [`DEPLOY-INDIA.md`](docs/DEPLOY-INDIA.md) | region, staff accounts (Windows CMD commands), real gauge feed, village data, go-live checklist |
+| [`SOP.md`](docs/SOP.md) | control-room runbook: working the queue, what to do when something breaks |
+| [`SECURITY.md`](docs/SECURITY.md) · [`PRIVACY.md`](docs/PRIVACY.md) | what is protected, known gaps, data handling notes for legal review |
+| [`WHATSAPP.md`](docs/WHATSAPP.md) | connecting the Meta WhatsApp Business webhook |
+| [`PITCH.md`](docs/PITCH.md) · [`DEMO-SCRIPT.md`](docs/DEMO-SCRIPT.md) | one-page pitch and a 5-minute demo script |
 
 ## Repo layout
 
