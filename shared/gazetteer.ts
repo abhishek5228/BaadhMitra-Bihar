@@ -8,13 +8,14 @@ export interface Place {
   en: string
   hi: string[] // Devanagari spellings and common variants
   alt?: string[] // romanised variants used in Hinglish
+  amb?: boolean // Latin spelling is also a common Hindi word (gaya = went, barh = flood); match only when capitalised
   lat: number
   lon: number
 }
 
 export const PLACES: Place[] = [
   { en: 'Patna', hi: ['पटना'], lat: 25.61, lon: 85.14 },
-  { en: 'Gaya', hi: ['गया'], lat: 24.8, lon: 85.0 },
+  { en: 'Gaya', hi: ['गया'], amb: true, lat: 24.8, lon: 85.0 },
   { en: 'Muzaffarpur', hi: ['मुजफ्फरपुर', 'मुज़फ़्फ़रपुर'], alt: ['muzzafarpur', 'muzaffarpur'], lat: 26.12, lon: 85.39 },
   { en: 'Darbhanga', hi: ['दरभंगा'], lat: 26.16, lon: 85.9 },
   { en: 'Saharsa', hi: ['सहरसा'], lat: 25.88, lon: 86.6 },
@@ -33,7 +34,7 @@ export const PLACES: Place[] = [
   { en: 'Chapra', hi: ['छपरा', 'सारण'], alt: ['saran'], lat: 25.78, lon: 84.75 },
   { en: 'Siwan', hi: ['सिवान'], lat: 26.22, lon: 84.36 },
   { en: 'Buxar', hi: ['बक्सर'], lat: 25.56, lon: 83.98 },
-  { en: 'Ara', hi: ['आरा', 'भोजपुर'], alt: ['arrah', 'bhojpur'], lat: 25.56, lon: 84.67 },
+  { en: 'Ara', hi: ['आरा', 'भोजपुर'], alt: ['arrah', 'bhojpur'], amb: true, lat: 25.56, lon: 84.67 },
   { en: 'Hajipur', hi: ['हाजीपुर', 'वैशाली'], alt: ['vaishali'], lat: 25.69, lon: 85.21 },
   { en: 'Munger', hi: ['मुंगेर', 'मुगेर'], alt: ['monghyr'], lat: 25.38, lon: 86.47 },
   { en: 'Kishanganj', hi: ['किशनगंज'], lat: 26.1, lon: 87.95 },
@@ -51,7 +52,7 @@ export const PLACES: Place[] = [
   { en: 'Nirmali', hi: ['निर्मली'], lat: 26.31, lon: 86.58 },
   { en: 'Murliganj', hi: ['मुरलीगंज'], lat: 25.9, lon: 86.98 },
   { en: 'Naugachia', hi: ['नौगछिया'], lat: 25.4, lon: 87.1 },
-  { en: 'Barh', hi: ['बाढ़'], alt: [], lat: 25.48, lon: 85.71 },
+  { en: 'Barh', hi: [], alt: [], amb: true, lat: 25.48, lon: 85.71 },
   { en: 'Mokama', hi: ['मोकामा'], lat: 25.4, lon: 85.92 },
   { en: 'Manihari', hi: ['मनिहारी'], lat: 25.35, lon: 87.62 },
 ]
@@ -75,18 +76,29 @@ const IDX = PLACES.map((p) => {
 export function locate(text: string): Place | null {
   const low = text.toLowerCase()
   let best: { p: Place; at: number } | null = null
+  const take = (p: Place, at: number) => {
+    if (!best || at < best.at) best = { p, at }
+  }
   for (const e of IDX) {
     for (const nm of e.names) {
-      // "Barh" must not match inside other words, so use word boundaries for Latin names.
+      if (e.p.amb) {
+        // "paani aa gaya" must not become Gaya, and "barh" (flood) must not become Barh:
+        // for these names, require the capitalised spelling in the original text.
+        const cap = nm.charAt(0).toUpperCase() + nm.slice(1)
+        const m = new RegExp(`(^|[^A-Za-z])${esc(cap)}([^A-Za-z]|$)`).exec(text)
+        if (m) take(e.p, m.index)
+        continue
+      }
+      // Word boundaries for Latin names so a short name never matches inside another word.
       const m = new RegExp(`(^|[^a-z])${esc(nm)}([^a-z]|$)`).exec(low)
-      if (m && (!best || m.index < best.at)) best = { p: e.p, at: m.index }
+      if (m) take(e.p, m.index)
     }
     for (const h of e.hi) {
       const at = low.indexOf(h)
-      if (at >= 0 && (!best || at < best.at)) best = { p: e.p, at }
+      if (at >= 0) take(e.p, at)
     }
   }
-  return best ? best.p : null
+  return best ? (best as { p: Place; at: number }).p : null
 }
 
 /** Nearest known place to a coordinate, with the distance in km. */

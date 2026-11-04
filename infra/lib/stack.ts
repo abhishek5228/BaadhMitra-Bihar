@@ -155,6 +155,7 @@ export class BaadhMitraStack extends cdk.Stack {
         methodOptions: {
           '/reports/POST': { throttlingRateLimit: 10, throttlingBurstLimit: 20 },
           '/upload-url/POST': { throttlingRateLimit: 5, throttlingBurstLimit: 10 },
+          '/subscribe/POST': { throttlingRateLimit: 1, throttlingBurstLimit: 3 }, // each call can email a stranger a confirmation
         },
       },
       defaultCorsPreflightOptions: { allowOrigins: api.Cors.ALL_ORIGINS, allowMethods: ['GET', 'POST', 'OPTIONS'], allowHeaders: ['Content-Type', 'X-Api-Key'] },

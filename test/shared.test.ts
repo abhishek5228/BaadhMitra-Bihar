@@ -31,6 +31,12 @@ describe('gazetteer', () => {
   it('does not match a short name inside another word', () => {
     expect(locate('barhiya road pe paani hai')).toBeNull()
   })
+  it('does not mistake common Hindi words for place names', () => {
+    expect(locate('paani aa gaya hai please madad karo')).toBeNull() // gaya = went
+    expect(locate('barh ka paani badh raha hai')).toBeNull() // barh = flood
+    expect(locate('Gaya me paani bhar gaya')?.en).toBe('Gaya')
+    expect(locate('Barh me 25 log phanse hain')?.en).toBe('Barh')
+  })
   it('converts Devanagari digits', () => {
     expect(ascii('२० लोग')).toBe('20 लोग')
   })

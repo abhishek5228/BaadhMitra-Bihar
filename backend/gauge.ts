@@ -4,7 +4,8 @@ import { PollyClient, SynthesizeSpeechCommand } from '@aws-sdk/client-polly'
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { TBL, ddb, emf, env, pad, rid, s3, sns } from './lib/aws'
 import { STATIONS, simlvl } from '../shared/stations'
-import type { Alert, Gauge, GState } from '../shared/types'
+import { atext, grank, gstate } from '../shared/alert'
+import type { Alert, Gauge } from '../shared/types'
 
 const polly = new PollyClient({})
 
@@ -42,25 +43,9 @@ async function readings(now: number): Promise<Rd[]> {
   return STATIONS.map((s) => ({ id: s.id, name: s.name, river: s.river, lat: s.lat, lon: s.lon, danger: s.danger, lvl: simlvl(s, now), sim: true }))
 }
 
-const state = (lvl: number, danger: number): GState => (lvl >= danger ? 'danger' : lvl >= danger - 1 ? 'warn' : 'normal')
-const rank: Record<GState, number> = { normal: 0, warn: 1, danger: 2 }
-
-function texts(g: Gauge): { en: string; hi: string } {
-  const gap = Math.abs(g.danger - g.lvl).toFixed(2)
-  if (g.state === 'danger')
-    return {
-      en: `Flood danger: ${g.river} at ${g.name} is ${g.lvl.toFixed(2)} m, ${gap} m above the danger level. Move to higher ground now. Do not cross flowing water.`,
-      hi: `बाढ़ का खतरा: ${g.name} पर ${g.river} का जलस्तर ${g.lvl.toFixed(2)} मीटर है, खतरे के निशान से ${gap} मीटर ऊपर। अभी ऊँची जगह पर जाएँ। बहते पानी को पार न करें।`,
-    }
-  return {
-    en: `Flood warning: ${g.river} at ${g.name} is ${g.lvl.toFixed(2)} m, ${gap} m below the danger level and rising. Prepare to move.`,
-    hi: `बाढ़ की चेतावनी: ${g.name} पर ${g.river} का जलस्तर ${g.lvl.toFixed(2)} मीटर है, खतरे के निशान से ${gap} मीटर नीचे है। जाने की तैयारी रखें।`,
-  }
-}
-
 async function raise(g: Gauge, now: number): Promise<void> {
   const id = rid()
-  const t = texts(g)
+  const t = atext(g)
   let akey: string | undefined
   try {
     // Hindi voice for people who cannot read, or are reading by torchlight.
@@ -97,7 +82,7 @@ export const handler = async (): Promise<void> => {
       lon: r.lon,
       lvl: r.lvl,
       danger: r.danger,
-      state: state(r.lvl, r.danger),
+      state: gstate(r.lvl, r.danger),
       trend: prev ? Math.round(((r.lvl - prev.lvl) / hrs) * 100) / 100 : 0,
       ts: now,
       sim: r.sim,
@@ -106,7 +91,7 @@ export const handler = async (): Promise<void> => {
     await ddb.send(new PutCommand({ TableName: TBL(), Item: { pk: 'G#' + r.id, sk: 'H#' + pad(now / 1000, 12), lvl: r.lvl, ttl: Math.floor(now / 1000) + 30 * 86400 } }))
     // A real warning needs a rising river; a simulated one just needs to cross the line (it is a demo).
     const rising = g.trend > 0 || g.sim
-    if (rank[g.state] > rank[prev?.state ?? 'normal'] && rising) await raise(g, now)
+    if (grank[g.state] > grank[prev?.state ?? 'normal'] && rising) await raise(g, now)
   }
   emf('GaugePolls', 1)
 }
