@@ -5,7 +5,7 @@ import { SQSClient } from '@aws-sdk/client-sqs'
 import { S3Client } from '@aws-sdk/client-s3'
 import { SNSClient } from '@aws-sdk/client-sns'
 import type { APIGatewayProxyResult } from 'aws-lambda'
-import type { Inc } from '../../shared/types'
+import type { Gauge, Inc } from '../../shared/types'
 
 export const env = (k: string, d = ''): string => process.env[k] ?? d
 
@@ -71,6 +71,13 @@ export async function listInc(lim = 150): Promise<Inc[]> {
     }),
   )
   return (r.Items ?? []).map((x) => x.inc as Inc)
+}
+
+export async function listGauges(): Promise<Gauge[]> {
+  const r = await ddb.send(
+    new QueryCommand({ TableName: TBL(), IndexName: 'gsi1', KeyConditionExpression: 'g1p = :p', ExpressionAttributeValues: { ':p': 'GAUGE' }, Limit: 100 }),
+  )
+  return (r.Items ?? []).map((x) => x.g as Gauge)
 }
 
 // ---- counters --------------------------------------------------------------

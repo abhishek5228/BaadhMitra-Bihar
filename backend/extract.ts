@@ -9,6 +9,11 @@ import { merge } from '../shared/score'
 import { nearest } from '../shared/gazetteer'
 import { ghash, inBihar } from '../shared/geo'
 import type { Rep } from '../shared/types'
+import { buildIndex, findVillage, type Vil } from '../shared/villages'
+import villages from '../shared/villages.json'
+
+// Empty unless a licensed village dataset was imported (see docs/DEPLOY-INDIA.md).
+const VIDX = buildIndex(villages as Vil[])
 
 const br = new BedrockRuntimeClient({})
 
@@ -43,6 +48,10 @@ function place(rep: Rep, msg: Msg, text: string): Rep | null {
     const n = nearest(msg.lat, msg.lon)
     return { ...rep, lat: msg.lat, lon: msg.lon, place: rep.place ?? n.p.en, conf: Math.min(1, rep.conf + 0.1) }
   }
+  // Village names beat the model's guess: they are finer than a district centre.
+  const hint = rep.lat !== null && rep.lon !== null ? { lat: rep.lat, lon: rep.lon } : null
+  const v = findVillage(text, VIDX, { near: hint })
+  if (v) return { ...rep, lat: v.v[2], lon: v.v[3], place: v.v[0], conf: Math.round(rep.conf * (v.amb ? 85 : 100)) / 100 }
   if (rep.lat !== null) return rep
   const r2 = rulex(text) // the model named somewhere the gazetteer does not know; try the text itself
   if (r2.lat !== null) return { ...rep, lat: r2.lat, lon: r2.lon, place: r2.place, conf: Math.round(rep.conf * 90) / 100 }

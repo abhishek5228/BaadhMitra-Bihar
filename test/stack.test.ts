@@ -25,20 +25,43 @@ describe('infrastructure guarantees', () => {
       ScalingConfig: { MaximumConcurrency: 5 },
     })
   })
-  it('only citizen intake routes are public; dispatcher routes need an API key', () => {
+  it('only citizen intake and the signed WhatsApp webhook are public; staff routes need Cognito', () => {
     const ms = Object.values(t.findResources('AWS::ApiGateway::Method')) as { Properties: Record<string, unknown> }[]
-    const open = ms.filter((m) => m.Properties.HttpMethod !== 'OPTIONS' && m.Properties.ApiKeyRequired !== true)
-    expect(open).toHaveLength(3) // POST /reports, /upload-url, /subscribe
+    const open = ms.filter((m) => m.Properties.HttpMethod !== 'OPTIONS' && m.Properties.AuthorizationType !== 'COGNITO_USER_POOLS')
+    expect(open).toHaveLength(5) // POST /reports, /upload-url, /subscribe, GET+POST /whatsapp
+    expect(ms.filter((m) => m.Properties.ApiKeyRequired === true)).toHaveLength(0)
+  })
+  it('has a staff user pool with no self sign-up, 12+ char passwords and three role groups', () => {
+    t.hasResourceProperties('AWS::Cognito::UserPool', {
+      AdminCreateUserConfig: { AllowAdminCreateUserOnly: true },
+      Policies: { PasswordPolicy: Match.objectLike({ MinimumLength: 12 }) },
+    })
+    t.resourceCountIs('AWS::Cognito::UserPoolGroup', 3)
+  })
+  it('keeps WhatsApp credentials in Secrets Manager, not in Lambda env values', () => {
+    t.resourceCountIs('AWS::SecretsManager::Secret', 1)
+    expect(JSON.stringify(Object.values(t.findResources('AWS::Lambda::Function')))).not.toContain('app_secret":"')
   })
   it('all buckets block public access and require TLS', () => {
     const bs = Object.values(t.findResources('AWS::S3::Bucket')) as { Properties: Record<string, unknown> }[]
     for (const b of bs) expect(b.Properties.PublicAccessBlockConfiguration).toMatchObject({ BlockPublicAcls: true, RestrictPublicBuckets: true })
   })
-  it('raises alarms for the DLQ, queue age and extractor errors', () => {
-    t.resourceCountIs('AWS::CloudWatch::Alarm', 3)
+  it('raises alarms for the DLQ, queue age, extractor and WhatsApp errors', () => {
+    t.resourceCountIs('AWS::CloudWatch::Alarm', 4)
   })
   it('listens for finished Transcribe jobs and polls gauges on a schedule', () => {
     t.hasResourceProperties('AWS::Events::Rule', { EventPattern: Match.objectLike({ source: ['aws.transcribe'] }) })
     t.hasResourceProperties('AWS::Events::Rule', { ScheduleExpression: 'rate(15 minutes)' })
+  })
+})
+
+describe('opt-in edge protection', () => {
+  it('adds a WAF only when asked', () => {
+    t.resourceCountIs('AWS::WAFv2::WebACL', 0)
+    const a = new cdk.App({ context: { 'aws:cdk:bundling-stacks': [], waf: 'true', gaugeFeedUrl: 'https://example.gov/g.json' } })
+    const w = Template.fromStack(new BaadhMitraStack(a, 'W', { env: { account: '111111111111', region: 'ap-southeast-2' } }))
+    w.resourceCountIs('AWS::WAFv2::WebACL', 1)
+    w.resourceCountIs('AWS::WAFv2::WebACLAssociation', 1)
+    w.resourceCountIs('AWS::CloudWatch::Alarm', 5) // + FeedDown when a feed is configured
   })
 })

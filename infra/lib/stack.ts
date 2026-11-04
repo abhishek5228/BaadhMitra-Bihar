@@ -21,6 +21,9 @@ import * as cwa from 'aws-cdk-lib/aws-cloudwatch-actions'
 import * as cf from 'aws-cdk-lib/aws-cloudfront'
 import * as org from 'aws-cdk-lib/aws-cloudfront-origins'
 import * as logs from 'aws-cdk-lib/aws-logs'
+import * as cog from 'aws-cdk-lib/aws-cognito'
+import * as sm from 'aws-cdk-lib/aws-secretsmanager'
+import * as waf from 'aws-cdk-lib/aws-wafv2'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -31,6 +34,8 @@ export class BaadhMitraStack extends cdk.Stack {
     const model: string = this.node.tryGetContext('modelId') ?? 'anthropic.claude-3-haiku-20240307-v1:0'
     const poll: number = Number(this.node.tryGetContext('pollMins') ?? 15)
     const feed: string = this.node.tryGetContext('gaugeFeedUrl') ?? ''
+    const rps = Number(this.node.tryGetContext('reportRps') ?? 10) // citizen intake throughput; raise for a real flood
+    const useWaf = String(this.node.tryGetContext('waf') ?? 'false') === 'true'
 
     // ---------------------------------------------------------------- data
     // Single table. pk/sk addressing plus one GSI (gsi1) that serves every "list" screen:
@@ -74,8 +79,39 @@ export class BaadhMitraStack extends cdk.Stack {
       deadLetterQueue: { queue: dlq, maxReceiveCount: 3 },
     })
 
+    // ---------------------------------------------------------------- identity
+    // Dispatchers sign in with Cognito. No self sign-up: an administrator creates each account and
+    // puts it in one group (district_officer, control_room or viewer). The API checks the group.
+    const pool = new cog.UserPool(this, 'Pool', {
+      userPoolName: 'baadhmitra-staff',
+      selfSignUpEnabled: false,
+      signInAliases: { email: true },
+      autoVerify: { email: true },
+      passwordPolicy: { minLength: 12, requireLowercase: true, requireUppercase: true, requireDigits: true, requireSymbols: false },
+      mfa: cog.Mfa.OPTIONAL,
+      mfaSecondFactor: { sms: false, otp: true },
+      accountRecovery: cog.AccountRecovery.EMAIL_ONLY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    })
+    for (const g of ['district_officer', 'control_room', 'viewer']) new cog.CfnUserPoolGroup(this, 'Grp' + g, { userPoolId: pool.userPoolId, groupName: g })
+    const client = pool.addClient('Web', {
+      authFlows: { userPassword: true },
+      generateSecret: false,
+      preventUserExistenceErrors: true,
+      idTokenValidity: cdk.Duration.hours(1),
+      accessTokenValidity: cdk.Duration.hours(1),
+      refreshTokenValidity: cdk.Duration.days(1),
+    })
+
+    // WhatsApp credentials live in Secrets Manager, never in code or env vars. Fill in after Meta approval.
+    const waSecret = new sm.Secret(this, 'Wa', {
+      secretName: 'baadhmitra/whatsapp',
+      description: 'Meta WhatsApp Cloud API: verify_token, app_secret, access_token, phone_id',
+      secretStringValue: cdk.SecretValue.unsafePlainText(JSON.stringify({ verify_token: '', app_secret: '', access_token: '', phone_id: '' })),
+    })
+
     // ---------------------------------------------------------------- functions
-    const env = { TBL: tbl.tableName, QURL: que.queueUrl, Q_ARN: que.queueArn, DLQ_ARN: dlq.queueArn, BKT: bkt.bucketName, TOPIC: top.topicArn, MODEL: model, FEED: feed }
+    const env = { TBL: tbl.tableName, QURL: que.queueUrl, Q_ARN: que.queueArn, DLQ_ARN: dlq.queueArn, BKT: bkt.bucketName, TOPIC: top.topicArn, MODEL: model, FEED: feed, SALT: cdk.Fn.select(2, cdk.Fn.split('/', this.stackId)), WA_SECRET: waSecret.secretArn }
     const fn = (name: string, entry: string, handler: string, o: { mem?: number; secs?: number } = {}) =>
       new NodejsFunction(this, name, {
         entry: path.join(ROOT, 'backend', entry),
@@ -96,12 +132,16 @@ export class BaadhMitraStack extends cdk.Stack {
     const fVs = fn('VoiceStart', 'voice.ts', 'onAudio')
     const fVd = fn('VoiceDone', 'voice.ts', 'onDone')
     const fGa = fn('Gauge', 'gauge.ts', 'handler', { secs: 60 })
+    const fWa = fn('Whatsapp', 'wa.ts', 'handler', { secs: 25 })
 
     // least privilege, function by function
-    for (const f of [fIn, fEx, fApi, fVd, fGa]) tbl.grantReadWriteData(f)
+    for (const f of [fIn, fEx, fApi, fVd, fGa, fWa]) tbl.grantReadWriteData(f)
     que.grantSendMessages(fIn)
     que.grantSendMessages(fVd)
     bkt.grantPut(fIn)
+    bkt.grantPut(fWa)
+    que.grantSendMessages(fWa)
+    waSecret.grantRead(fWa)
     bkt.grantRead(fApi)
     bkt.grantReadWrite(fVs)
     bkt.grantRead(fVd)
@@ -154,12 +194,13 @@ export class BaadhMitraStack extends cdk.Stack {
         throttlingRateLimit: 30,
         throttlingBurstLimit: 60,
         methodOptions: {
-          '/reports/POST': { throttlingRateLimit: 10, throttlingBurstLimit: 20 },
+          '/reports/POST': { throttlingRateLimit: rps, throttlingBurstLimit: rps * 2 },
+          '/whatsapp/POST': { throttlingRateLimit: rps, throttlingBurstLimit: rps * 2 },
           '/upload-url/POST': { throttlingRateLimit: 5, throttlingBurstLimit: 10 },
           '/subscribe/POST': { throttlingRateLimit: 1, throttlingBurstLimit: 3 }, // each call can email a stranger a confirmation
         },
       },
-      defaultCorsPreflightOptions: { allowOrigins: api.Cors.ALL_ORIGINS, allowMethods: ['GET', 'POST', 'OPTIONS'], allowHeaders: ['Content-Type', 'X-Api-Key'] },
+      defaultCorsPreflightOptions: { allowOrigins: api.Cors.ALL_ORIGINS, allowMethods: ['GET', 'POST', 'OPTIONS'], allowHeaders: ['Content-Type', 'Authorization'] },
     })
     // Errors raised by API Gateway itself (wrong or missing key, throttling, validation) must still carry
     // CORS headers, otherwise the browser hides the real status behind a generic network error.
@@ -168,7 +209,9 @@ export class BaadhMitraStack extends cdk.Stack {
     rest.addGatewayResponse('Gw5xx', { type: api.ResponseType.DEFAULT_5XX, responseHeaders: cors })
     const lamIn = new api.LambdaIntegration(fIn)
     const lamApi = new api.LambdaIntegration(fApi)
-    const keyed = { apiKeyRequired: true }
+    const lamWa = new api.LambdaIntegration(fWa)
+    const auth = new api.CognitoUserPoolsAuthorizer(this, 'Auth', { cognitoUserPools: [pool], identitySource: 'method.request.header.Authorization' })
+    const keyed = { authorizer: auth, authorizationType: api.AuthorizationType.COGNITO }
 
     const repModel = rest.addModel('Rep', {
       contentType: 'application/json',
@@ -191,6 +234,9 @@ export class BaadhMitraStack extends cdk.Stack {
     rest.root.addResource('reports').addMethod('POST', lamIn, { requestModels: { 'application/json': repModel }, requestValidator: val })
     rest.root.addResource('upload-url').addMethod('POST', lamIn)
     rest.root.addResource('subscribe').addMethod('POST', lamApi)
+    const wa = rest.root.addResource('whatsapp') // Meta calls this; authenticity is checked by signature inside the Lambda
+    wa.addMethod('GET', lamWa)
+    wa.addMethod('POST', lamWa)
 
     // dispatcher endpoints need the API key
     const inc = rest.root.addResource('incidents')
@@ -198,13 +244,25 @@ export class BaadhMitraStack extends cdk.Stack {
     const one = inc.addResource('{id}')
     one.addResource('assign').addMethod('POST', lamApi, keyed)
     one.addResource('resolve').addMethod('POST', lamApi, keyed)
+    one.addResource('dismiss').addMethod('POST', lamApi, keyed)
     for (const p of ['gauges', 'alerts', 'stats', 'unplaced']) rest.root.addResource(p).addMethod('GET', lamApi, keyed)
     rest.root.addResource('admin').addResource('replay').addMethod('POST', lamApi, keyed)
+    rest.root.addResource('audit').addMethod('GET', lamApi, keyed)
 
-    const key = rest.addApiKey('Key', { apiKeyName: 'baadhmitra-dispatcher' })
-    const plan = rest.addUsagePlan('Plan', { name: 'dispatchers', throttle: { rateLimit: 50, burstLimit: 100 }, quota: { limit: 100000, period: api.Period.DAY } })
-    plan.addApiKey(key)
-    plan.addApiStage({ stage: rest.deploymentStage })
+    // Optional edge protection (about USD 10 a month): AWS managed rules plus a per-IP rate cap.
+    if (useWaf) {
+      const vis = (n: string) => ({ sampledRequestsEnabled: true, cloudWatchMetricsEnabled: true, metricName: n })
+      const acl = new waf.CfnWebACL(this, 'Acl', {
+        scope: 'REGIONAL',
+        defaultAction: { allow: {} },
+        visibilityConfig: vis('baadhmitra'),
+        rules: [
+          { name: 'ipcap', priority: 0, action: { block: {} }, statement: { rateBasedStatement: { limit: 600, aggregateKeyType: 'IP' } }, visibilityConfig: vis('ipcap') },
+          { name: 'common', priority: 1, overrideAction: { none: {} }, statement: { managedRuleGroupStatement: { vendorName: 'AWS', name: 'AWSManagedRulesCommonRuleSet' } }, visibilityConfig: vis('common') },
+        ],
+      })
+      new waf.CfnWebACLAssociation(this, 'AclLink', { resourceArn: rest.deploymentStage.stageArn, webAclArn: acl.attrArn })
+    }
 
     // ---------------------------------------------------------------- observability
     const mt = (n: string, stat = 'Sum', per = 5) => new cw.Metric({ namespace: 'BaadhMitra', metricName: n, statistic: stat, period: cdk.Duration.minutes(per) })
@@ -221,14 +279,20 @@ export class BaadhMitraStack extends cdk.Stack {
     dash.addWidgets(
       new cw.GraphWidget({ title: 'API 4xx / 5xx', left: [rest.metricClientError(), rest.metricServerError()], width: 12 }),
       new cw.GraphWidget({ title: 'API latency p95', left: [rest.metricLatency({ statistic: 'p95' })], width: 12 }),
-      new cw.GraphWidget({ title: 'Lambda errors', left: [fIn, fEx, fApi, fVd, fGa].map((f) => f.metricErrors()), width: 24 }),
+      new cw.GraphWidget({ title: 'Lambda errors', left: [fIn, fEx, fApi, fVd, fGa, fWa].map((f) => f.metricErrors()), width: 24 }),
     )
 
     const act = new cwa.SnsAction(top)
     const a1 = new cw.Alarm(this, 'DlqAlarm', { alarmDescription: 'Reports are failing into the dead-letter queue. Replay with POST /admin/replay.', metric: dlq.metricApproximateNumberOfMessagesVisible(), threshold: 1, evaluationPeriods: 1, comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD })
     const a2 = new cw.Alarm(this, 'AgeAlarm', { alarmDescription: 'Reports are waiting more than 5 minutes.', metric: que.metricApproximateAgeOfOldestMessage(), threshold: 300, evaluationPeriods: 2 })
     const a3 = new cw.Alarm(this, 'ExtractErr', { alarmDescription: 'Extractor Lambda errors', metric: fEx.metricErrors({ period: cdk.Duration.minutes(5) }), threshold: 1, evaluationPeriods: 1, treatMissingData: cw.TreatMissingData.NOT_BREACHING })
-    for (const a of [a1, a2, a3]) a.addAlarmAction(act)
+    const a4 = new cw.Alarm(this, 'WaErr', { alarmDescription: 'WhatsApp webhook Lambda errors: Meta will retry, but check the secret and token.', metric: fWa.metricErrors({ period: cdk.Duration.minutes(5) }), threshold: 1, evaluationPeriods: 1, treatMissingData: cw.TreatMissingData.NOT_BREACHING })
+    const alarms = [a1, a2, a3, a4]
+    if (feed) {
+      // Only meaningful with a real feed: silence here means river levels on screen are going stale.
+      alarms.push(new cw.Alarm(this, 'FeedDown', { alarmDescription: 'Official gauge feed unreachable or invalid. Dashboard shows last readings marked stale.', metric: mt('FeedDown', 'Sum', 15), threshold: 1, evaluationPeriods: 2, treatMissingData: cw.TreatMissingData.NOT_BREACHING }))
+    }
+    for (const a of alarms) a.addAlarmAction(act)
 
     // ---------------------------------------------------------------- 3D dashboard hosting
     const site = new s3.Bucket(this, 'Site', { blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL, encryption: s3.BucketEncryption.S3_MANAGED, enforceSSL: true, removalPolicy: cdk.RemovalPolicy.DESTROY, autoDeleteObjects: true })
@@ -244,7 +308,7 @@ export class BaadhMitraStack extends cdk.Stack {
     const dist = path.join(ROOT, 'web', 'dist')
     if (existsSync(dist)) {
       new s3d.BucketDeployment(this, 'Web', {
-        sources: [s3d.Source.asset(dist), s3d.Source.jsonData('config.json', { api: rest.url })],
+        sources: [s3d.Source.asset(dist), s3d.Source.jsonData('config.json', { api: rest.url, region: this.region, clientId: client.userPoolClientId, poolId: pool.userPoolId })],
         destinationBucket: site,
         distribution: cdn,
         distributionPaths: ['/*'],
@@ -252,7 +316,9 @@ export class BaadhMitraStack extends cdk.Stack {
     }
 
     new cdk.CfnOutput(this, 'ApiUrl', { value: rest.url })
-    new cdk.CfnOutput(this, 'ApiKeyId', { value: key.keyId, description: 'aws apigateway get-api-key --api-key <id> --include-value' })
+    new cdk.CfnOutput(this, 'UserPoolId', { value: pool.userPoolId })
+    new cdk.CfnOutput(this, 'ClientId', { value: client.userPoolClientId })
+    new cdk.CfnOutput(this, 'WaSecret', { value: waSecret.secretName, description: 'fill in after Meta approval, see docs/WHATSAPP.md' })
     new cdk.CfnOutput(this, 'SiteUrl', { value: 'https://' + cdn.distributionDomainName })
     new cdk.CfnOutput(this, 'TopicArn', { value: top.topicArn })
     new cdk.CfnOutput(this, 'DlqUrl', { value: dlq.queueUrl })

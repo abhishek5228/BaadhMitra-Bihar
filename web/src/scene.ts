@@ -232,7 +232,7 @@ export class World {
     let f = 0
     for (const g of gs) {
       f += Math.min(1, Math.max(0, (g.lvl - (g.danger - 1.5)) / 2.5))
-      const col = g.state === 'danger' ? '#e5484d' : g.state === 'warn' ? '#f5a524' : '#2fbf71'
+      const col = g.stale ? '#7b8494' : g.state === 'danger' ? '#e5484d' : g.state === 'warn' ? '#f5a524' : '#2fbf71'
       let t = this.tow.get(g.id)
       const h = hAt(g.lat, g.lon)
       if (!t) {
@@ -251,7 +251,7 @@ export class World {
       const mat = t.cap.material as THREE.MeshStandardMaterial
       mat.color.set(col)
       mat.emissive.set(col)
-      t.tag.element.textContent = `${g.name} ${g.lvl.toFixed(2)}m${g.sim ? ' (sim)' : ''}`
+      t.tag.element.textContent = `${g.name} ${g.lvl.toFixed(2)}m${g.sim ? ' (sim)' : ''}${g.stale ? ' (old)' : ''}`
       t.tag.element.className = 'lbl gau ' + g.state
     }
     this.flood = gs.length ? f / gs.length : 0

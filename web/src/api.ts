@@ -1,4 +1,5 @@
-import type { Alert, Gauge, Inc, Stats } from '../../shared/types'
+import type { Alert, AuditRow, Gauge, Inc, Role, Stats } from '../../shared/types'
+import { clear, load, token, type Cfg, type Sess } from './auth'
 import { demoApi } from './demo'
 
 export type Pin = { lat: number; lon: number }
@@ -6,6 +7,9 @@ export type St = Stats & { unpl: number }
 
 export interface Api {
   mode: 'demo' | 'live'
+  who: string // signed-in person (empty in demo)
+  roles: Role[]
+  signOut?: () => void
   incidents(): Promise<Inc[]>
   gauges(): Promise<Gauge[]>
   alerts(): Promise<Alert[]>
@@ -14,23 +18,9 @@ export interface Api {
   voice(blob: Blob, ext: string, pin?: Pin): Promise<void>
   assign(id: string, team: string): Promise<void>
   resolve(id: string): Promise<void>
+  dismiss(id: string): Promise<void>
+  audit(): Promise<AuditRow[]>
   surge?: () => void // demo only
-}
-
-const KEY = 'bmkey'
-export const getKey = (): string => {
-  try {
-    return sessionStorage.getItem(KEY) ?? ''
-  } catch {
-    return ''
-  }
-}
-export const setKey = (k: string): void => {
-  try {
-    sessionStorage.setItem(KEY, k)
-  } catch {
-    /* private mode: key lives for this page load only */
-  }
 }
 
 /** A stable anonymous id so one phone texting ten times still counts once. */
@@ -47,20 +37,37 @@ function me(): string {
   }
 }
 
-function live(base: string, key: string): Api {
-  const root = base.replace(/\/$/, '')
+export class Expired extends Error {}
+
+function live(cfg: Cfg, ss: Sess): Api {
+  const root = cfg.api.replace(/\/$/, '')
   const call = async <T>(m: string, p: string, b?: unknown): Promise<T> => {
+    const tok = await token(cfg, ss)
+    if (!tok) {
+      clear()
+      throw new Expired('session ended')
+    }
     const r = await fetch(root + p, {
       method: m,
-      headers: { 'content-type': 'application/json', 'x-api-key': key },
+      headers: { 'content-type': 'application/json', authorization: tok },
       body: b === undefined ? undefined : JSON.stringify(b),
     })
+    if (r.status === 401) {
+      clear()
+      throw new Expired('session ended')
+    }
     if (!r.ok) throw new Error(`${m} ${p} -> ${r.status}`)
     return (await r.json()) as T
   }
   const pinb = (p?: Pin) => (p ? { lat: p.lat, lon: p.lon } : {})
   return {
     mode: 'live',
+    who: ss.email,
+    roles: ss.roles,
+    signOut: () => {
+      clear()
+      location.reload()
+    },
     incidents: async () => (await call<{ items: Inc[] }>('GET', '/incidents')).items,
     gauges: async () => (await call<{ items: Gauge[] }>('GET', '/gauges')).items,
     alerts: async () => (await call<{ items: Alert[] }>('GET', '/alerts')).items,
@@ -79,18 +86,44 @@ function live(base: string, key: string): Api {
     resolve: async (id) => {
       await call('POST', `/incidents/${encodeURIComponent(id)}/resolve`, {})
     },
+    dismiss: async (id) => {
+      await call('POST', `/incidents/${encodeURIComponent(id)}/dismiss`, {})
+    },
+    audit: async () => (await call<{ items: AuditRow[] }>('GET', '/audit')).items,
   }
 }
 
-/** Live if config.json (written by the CDK deploy) has an API URL and a key is set; otherwise the offline demo. */
-export async function connect(): Promise<{ api: Api; url: string }> {
-  let url = ''
+/** What the page found out at start-up: a live API with a session, a login to show, or the offline demo. */
+export type Boot = { api: Api; cfg: Cfg | null; needLogin: boolean }
+
+export async function connect(): Promise<Boot> {
+  let cfg: Cfg | null = null
   try {
     const r = await fetch('config.json', { cache: 'no-store' })
-    if (r.ok) url = ((await r.json()) as { api?: string }).api ?? ''
+    if (r.ok) {
+      const c = (await r.json()) as Partial<Cfg>
+      if (c.api && c.region && c.clientId) cfg = { api: c.api, region: c.region, clientId: c.clientId }
+    }
   } catch {
     /* no config: demo mode */
   }
-  const k = getKey()
-  return { api: url && k ? live(url, k) : demoApi(), url }
+  const ss = cfg ? load() : null
+  if (new URLSearchParams(location.search).has('demo')) return { api: demoApi(), cfg, needLogin: false } // explicit offline demo
+  if (cfg && ss) return { api: live(cfg, ss), cfg, needLogin: false }
+  return { api: demoApi(), cfg, needLogin: cfg !== null }
+}
+
+/** The unauthenticated citizen endpoints, used by the public report page. */
+export function citizen(base: string): { report(text: string, pin?: Pin): Promise<void> } {
+  const root = base.replace(/\/$/, '')
+  return {
+    report: async (text, pin) => {
+      const r = await fetch(root + '/reports', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text, sender: me(), ...(pin ? { lat: pin.lat, lon: pin.lon } : {}) }),
+      })
+      if (!r.ok && r.status !== 200) throw new Error(String(r.status))
+    },
+  }
 }

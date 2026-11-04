@@ -125,3 +125,16 @@ blockquote small { color: var(--mu); font-size: 11px; }
   .lbl.dist { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* staff sign-in, audit log, stale gauges */
+.g.stale { opacity: 0.6; border-left-color: #7b8494; background: rgba(120, 130, 150, 0.15); }
+.who { font-size: 12px; color: var(--mu); align-self: center; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modal { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(5, 9, 18, 0.6); backdrop-filter: blur(4px); padding: 16px; }
+.modal.solid { background: rgba(5, 9, 18, 0.86); }
+.card { position: relative; width: min(440px, 100%); max-height: 86vh; overflow: auto; background: var(--glass, rgba(16, 24, 40, 0.95)); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+.card label { font-size: 12px; color: var(--mu); margin-top: 6px; }
+.inp { background: rgba(0, 0, 0, 0.3); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 15px; color: inherit; }
+.msg { color: #ff8a8e; font-size: 13px; min-height: 18px; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tbl th, .tbl td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); word-break: break-all; }
+.modal .card:has(.tbl) { width: min(720px, 100%); }

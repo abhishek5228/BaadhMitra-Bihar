@@ -17,7 +17,7 @@ export interface Rep {
   src: 'llm' | 'rule' // which extractor produced it
 }
 
-export type IncStatus = 'open' | 'assigned' | 'resolved'
+export type IncStatus = 'open' | 'assigned' | 'resolved' | 'dismissed' // dismissed = judged false or duplicate by a person
 
 export interface Snip {
   ts: number
@@ -64,6 +64,7 @@ export interface Gauge {
   trend: number // metres per hour
   ts: number
   sim?: boolean // simulated reading
+  stale?: boolean // the feed is down or the reading is old: show it greyed out, never alert on it
 }
 
 export interface Alert {
@@ -84,3 +85,15 @@ export interface Stats {
   review: number
   dedup: number // 1 - incidents/reports
 }
+
+/** One line of the audit trail: who did what to which incident, and when. */
+export interface AuditRow {
+  id: string
+  ts: number
+  actor: string
+  action: string
+  target: string
+  team?: string
+}
+
+export type Role = 'district_officer' | 'control_room' | 'viewer'

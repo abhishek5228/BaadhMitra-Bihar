@@ -12,7 +12,7 @@ const HR = 3600_000
  * queue does not fill with stale items.
  */
 export function score(i: Pick<Inc, 'sev' | 'n' | 'ppl' | 'vul' | 'needs' | 'last' | 'status'>, now = Date.now()): number {
-  if (i.status === 'resolved') return 0
+  if (i.status === 'resolved' || i.status === 'dismissed') return 0
   let s = i.sev * 13 // up to 65
   s += Math.min(14, Math.log2(i.n + 1) * 5) // independent reporters
   s += Math.min(10, i.ppl / 4) // people at risk
@@ -73,8 +73,9 @@ export function merge(old: Inc | null, r: Rep, text: string, who: string, now = 
     // A cluster is "reviewed enough" once several independent people agree.
     review: n < 3 && (r.conf < REVIEW_BELOW || conf < REVIEW_BELOW),
     last: now,
-    // A new report on a resolved incident re-opens it: the water came back.
-    status: base.status === 'resolved' ? 'open' : base.status,
+    // A new report on a resolved incident re-opens it (the water came back). A dismissed incident re-opens
+    // only when a NEW person reports, so one spammer cannot keep resurrecting it.
+    status: base.status === 'resolved' || (base.status === 'dismissed' && fresh) ? 'open' : base.status,
     snips: [...base.snips, { ts: now, t: text.slice(0, 240), conf: r.conf, src: r.src }].slice(-6),
     who: who2,
     ver: base.ver + 1,

@@ -33,8 +33,11 @@ const fake = {
       const k = key(i.Key)
       const row = db.get(k) ?? { ...i.Key }
       if (i.UpdateExpression.startsWith('ADD')) {
-        const f = Object.values(i.ExpressionAttributeNames)[0] as string
+        const ref = /^ADD\s+(\S+)/.exec(i.UpdateExpression)![1]
+        const f = (i.ExpressionAttributeNames?.[ref] as string | undefined) ?? ref
         row[f] = Number(row[f] ?? 0) + (Object.values(i.ExpressionAttributeValues)[0] as number)
+        db.set(k, row)
+        return { Attributes: { [f]: row[f] } }
       }
       db.set(k, row)
       return {}
@@ -77,8 +80,14 @@ process.env.QURL = 'q'
 process.env.TOPIC = 'arn:topic'
 process.env.MODEL = 'm'
 
-const ev = (resource: string, method: string, b?: unknown, pp?: Record<string, string>) =>
-  ({ resource, httpMethod: method, body: b === undefined ? null : JSON.stringify(b), pathParameters: pp ?? null, requestContext: { identity: { sourceIp: '1.2.3.4' } } }) as any
+const ev = (resource: string, method: string, b?: unknown, pp?: Record<string, string>, groups: string | null = 'district_officer') =>
+  ({
+    resource,
+    httpMethod: method,
+    body: b === undefined ? null : JSON.stringify(b),
+    pathParameters: pp ?? null,
+    requestContext: { identity: { sourceIp: '1.2.3.4' }, authorizer: groups === null ? undefined : { claims: { sub: 's1', email: 'officer@example.gov.in', 'cognito:groups': groups } } },
+  }) as any
 
 beforeEach(() => {
   db.clear()
@@ -109,6 +118,14 @@ describe('text report -> queue -> extractor -> dispatcher API', async () => {
     expect(list.items[0].snips[0].src).toBe('rule') // Bedrock was down
     expect(list.items[0].who).toBeUndefined() // hashed sender ids are never exposed
     expect(JSON.parse((await api(ev('/stats', 'GET'))).body)).toMatchObject({ reports: 1, rule: 1, incidents: 1 })
+  })
+
+  it('rate-limits one sender but not others', async () => {
+    let last = 0
+    for (let k = 0; k < 32; k++) last = (await ing(ev('/reports', 'POST', { text: 'Kursela me paani aa gaya report ' + k, sender: 'spam' }))).statusCode
+    expect(last).toBe(429)
+    expect(sent.length).toBe(30)
+    expect((await ing(ev('/reports', 'POST', { text: 'Kursela me paani aa gaya', sender: 'other' }))).statusCode).toBe(202)
   })
 
   it('treats an identical resend as a duplicate and counts a repeat sender once', async () => {
@@ -165,5 +182,30 @@ describe('text report -> queue -> extractor -> dispatcher API', async () => {
     expect((await ing({ ...ev('/reports', 'POST'), body: '{bad' })).statusCode).toBe(400)
     expect((await ing(ev('/upload-url', 'POST', { ext: 'exe' }))).statusCode).toBe(400)
     expect((await api(ev('/nope', 'GET'))).statusCode).toBe(404)
+  })
+
+  it('enforces roles and writes an audit trail', async () => {
+    await ing(ev('/reports', 'POST', { text: 'Kursela me paani chhat par, 6 log, naav chahiye', sender: 'u1' }))
+    await drain()
+    const id = JSON.parse((await api(ev('/incidents', 'GET'))).body).items[0].id
+    const p = { id }
+    expect((await api(ev('/incidents', 'GET', undefined, undefined, null))).statusCode).toBe(401)
+    expect((await api(ev('/incidents/{id}/assign', 'POST', { team: 'NDRF-3' }, p, 'viewer'))).statusCode).toBe(403)
+    expect((await api(ev('/incidents/{id}/assign', 'POST', { team: 'NDRF-3' }, p, 'control_room'))).statusCode).toBe(200)
+    expect((await api(ev('/audit', 'GET', undefined, undefined, 'control_room'))).statusCode).toBe(403)
+    const au = JSON.parse((await api(ev('/audit', 'GET'))).body).items
+    expect(au).toHaveLength(1)
+    expect(au[0]).toMatchObject({ actor: 'officer@example.gov.in', action: 'assigned', target: id, team: 'NDRF-3' })
+  })
+
+  it('dismissed incidents leave the queue and a new independent report re-opens them', async () => {
+    await ing(ev('/reports', 'POST', { text: 'Kursela me paani chhat par, 6 log, naav chahiye', sender: 'u1' }))
+    await drain()
+    const id = JSON.parse((await api(ev('/incidents', 'GET'))).body).items[0].id
+    expect((await api(ev('/incidents/{id}/dismiss', 'POST', {}, { id }))).statusCode).toBe(200)
+    expect(JSON.parse((await api(ev('/incidents', 'GET'))).body).items).toHaveLength(0)
+    await ing(ev('/reports', 'POST', { text: 'Kursela me paani chhat par, 6 log, naav chahiye abhi', sender: 'u2' }))
+    await drain()
+    expect(JSON.parse((await api(ev('/incidents', 'GET'))).body).items).toHaveLength(1)
   })
 })

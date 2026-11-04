@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One command: build the 3D dashboard, create the AWS stack (API, Lambdas, queues, DynamoDB,
-# Bedrock/Transcribe/Polly permissions, CloudFront site) and print the dashboard URL and key.
+# Bedrock/Transcribe/Polly permissions, Cognito staff login, CloudFront site) and print the URLs.
 #
 #   AWS_REGION=ap-south-1 MODEL_ID=<bedrock model or inference profile id> ./scripts/deploy.sh
 set -euo pipefail
@@ -24,11 +24,18 @@ npm run web:build
 npx cdk bootstrap "aws://$ACC/$REGION"
 npx cdk deploy --require-approval never ${MODEL_ID:+-c modelId="$MODEL_ID"} --outputs-file cdk-outputs.json
 
-read -r SITE KEYID < <(node -e "const o=Object.values(require('./cdk-outputs.json'))[0];console.log(o.SiteUrl,o.ApiKeyId)")
-KEY="$(aws apigateway get-api-key --api-key "$KEYID" --include-value --query value --output text --region "$REGION")"
+read -r SITE POOL CLIENT < <(node -e "const o=Object.values(require('./cdk-outputs.json'))[0];console.log(o.SiteUrl,o.UserPoolId,o.ClientId)")
+
+# Optional: ADMIN_EMAIL=you@example.gov.in ./scripts/deploy.sh creates the first district_officer.
+if [ -n "${ADMIN_EMAIL:-}" ]; then
+  aws cognito-idp admin-create-user --user-pool-id "$POOL" --username "$ADMIN_EMAIL" --region "$REGION" \
+    --user-attributes Name=email,Value="$ADMIN_EMAIL" Name=email_verified,Value=true >/dev/null && \
+  aws cognito-idp admin-add-user-to-group --user-pool-id "$POOL" --username "$ADMIN_EMAIL" --group-name district_officer --region "$REGION" && \
+  echo "Created $ADMIN_EMAIL as district_officer. AWS emailed a temporary password."
+fi
 echo
 echo "================  BaadhMitra is live  ================"
-echo "Dashboard : $SITE"
-echo "API key   : $KEY    (paste it after pressing 'Connect to AWS')"
-echo "Alerts    : subscribe an email via POST /subscribe, then confirm the AWS email"
-echo "Metrics   : CloudWatch console > Dashboards > BaadhMitra"
+echo "Dashboard : $SITE            (staff sign-in)"
+echo "Citizens  : $SITE/report.html  (public report page, works offline)"
+echo "User pool : $POOL"
+echo "Next      : create staff users, see docs/DEPLOY-INDIA.md. Metrics: CloudWatch > Dashboards > BaadhMitra"

@@ -1,7 +1,8 @@
 import './style.css'
 import type { Alert, Gauge, Inc, Need } from '../../shared/types'
 import { inBihar } from '../../shared/geo'
-import { connect, setKey, type Api, type Pin, type St } from './api'
+import { connect, Expired, type Api, type Pin, type St } from './api'
+import { answer, save, signIn, type Cfg, type Step } from './auth'
 import { dict, type Lang } from './i18n'
 import { World, urg } from './scene'
 
@@ -31,7 +32,9 @@ const ago = (ts: number) => {
 const TEAMS = ['NDRF Team A', 'SDRF Boat 2', 'Local fishermen boats', 'Army flood column']
 
 async function main(): Promise<void> {
-  const { api, url } = await connect()
+  const boot = await connect()
+  const { api } = boot
+  const isDemo = api.mode === 'demo'
   let lang: Lang = navigator.language.startsWith('hi') ? 'hi' : 'en'
   let T = dict(lang)
   let incs: Inc[] = []
@@ -63,7 +66,7 @@ async function main(): Promise<void> {
 
   // ------------------------------------------------------------------ header
   function drawTop(): void {
-    if (!changed('top', [lang, st, incs.length, api.mode])) return
+    if (!changed('top', [lang, st, incs.length, api.mode, api.who])) return
     const mode = h('span', 'mode ' + api.mode, api.mode === 'live' ? T.live : T.demo)
     const mk = (label: string, fn: () => void) => {
       const b = h('button', 'btn', label)
@@ -78,16 +81,31 @@ async function main(): Promise<void> {
     ]
     const acts = kids[2] as HTMLElement
     if (api.surge) acts.append(mk('⚡ ' + T.surge, () => api.surge?.()))
-    if (api.mode === 'demo' && url) acts.append(mk('🔑 ' + T.connect, askKey))
+    if (boot.cfg && isDemo) acts.append(mk('🔑 ' + T.login, () => (location.href = location.pathname)))
+    if (can('admin')) acts.append(mk('🧾 ' + T.audit, openAudit))
+    if (api.who) acts.append(h('span', 'who', api.who + (api.roles.length ? '' : ' ⚠')))
+    if (api.signOut) acts.append(mk(T.signout, () => api.signOut?.()))
     acts.append(mk(lang === 'en' ? 'हिं' : 'EN', () => setLang(lang === 'en' ? 'hi' : 'en')))
     top.replaceChildren(...(kids as Node[]))
   }
 
-  function askKey(): void {
-    const k = prompt(T.key)
-    if (k && k.trim()) {
-      setKey(k.trim())
-      location.reload()
+  // ------------------------------------------------------------------ roles
+  // The server enforces these. Hiding a button is only a courtesy; it is never the protection.
+  const can = (a: 'read' | 'dispatch' | 'admin'): boolean =>
+    isDemo ? true : a === 'read' ? api.roles.length > 0 : a === 'dispatch' ? api.roles.some((r) => r !== 'viewer') : api.roles.includes('district_officer')
+
+  async function openAudit(): Promise<void> {
+    try {
+      const rows = await api.audit()
+      const box = h('div', 'modal')
+      const x = h('button', 'btn ghost close', '✕')
+      x.onclick = () => box.remove()
+      const tb = h('table', 'tbl', h('tr', '', h('th', '', T.when), h('th', '', T.whoDid), h('th', '', T.what), h('th', '', '#')))
+      for (const r of rows) tb.append(h('tr', '', h('td', '', new Date(r.ts).toLocaleString()), h('td', '', r.actor), h('td', '', r.action + (r.team ? ` → ${r.team}` : '')), h('td', '', r.target)))
+      box.append(h('div', 'card', x, h('h2', '', T.audit), rows.length ? tb : h('p', 'empty', T.none2)))
+      app.append(box)
+    } catch {
+      say(T.err, true)
     }
   }
 
@@ -186,6 +204,16 @@ async function main(): Promise<void> {
         say(T.err, true)
       }
     }
+    const dis = h('button', 'btn ghost', '🚫 ' + T.dismiss)
+    dis.onclick = async () => {
+      try {
+        await api.dismiss(i.id)
+        sel = ''
+        await refresh()
+      } catch {
+        say(T.err, true)
+      }
+    }
     const sn = h('div', 'snips')
     for (const s of [...i.snips].reverse()) sn.append(h('blockquote', '', h('p', '', s.t), h('small', '', `${ago(s.ts)} · ${s.src === 'llm' ? 'AI' : 'rules'} · ${Math.round(s.conf * 100)}%`)))
     const score = h('div', 'big', String(i.score))
@@ -202,7 +230,7 @@ async function main(): Promise<void> {
       i.review ? h('div', 'flag amber', '👁 ' + T.review) : null,
       h('h3', '', T.msgs),
       sn,
-      i.status === 'resolved' ? null : h('div', 'dispatch', team, go, done),
+      i.status === 'resolved' ? null : can('dispatch') ? h('div', 'dispatch', team, go, done, dis) : h('div', 'flag', T.readonly),
     )
   }
 
@@ -277,11 +305,12 @@ async function main(): Promise<void> {
 
   // ------------------------------------------------------------------ gauges
   function drawGauges(): void {
-    if (!changed('g', [lang, gs.map((g) => [g.id, g.lvl, g.state, g.trend])])) return
+    if (!changed('g', [lang, gs.map((g) => [g.id, g.lvl, g.state, g.trend, g.stale])])) return
     bar.replaceChildren(
       ...gs.map((g) => {
-        const c = h('div', 'g ' + g.state, h('b', '', g.name), h('span', '', `${g.lvl.toFixed(2)} m`), h('small', '', `${T.state[g.state]} · ${g.trend >= 0 ? '▲' : '▼'}${Math.abs(g.trend).toFixed(2)}`))
+        const c = h('div', 'g ' + g.state + (g.stale ? ' stale' : ''), h('b', '', g.name), h('span', '', `${g.lvl.toFixed(2)} m`), h('small', '', `${T.state[g.state]} · ${g.trend >= 0 ? '▲' : '▼'}${Math.abs(g.trend).toFixed(2)}`))
         if (g.sim) c.title = T.sim
+        if (g.stale) c.title = T.stale
         return c
       }),
     )
@@ -302,7 +331,12 @@ async function main(): Promise<void> {
   async function refresh(): Promise<void> {
     try {
       ;[incs, gs, als, st] = await Promise.all([api.incidents(), api.gauges(), api.alerts(), api.stats()])
-    } catch {
+    } catch (e) {
+      if (e instanceof Expired) {
+        alert(T.sess)
+        location.reload()
+        return
+      }
       return say(T.err, true)
     }
     for (const a of als) {
@@ -323,9 +357,70 @@ async function main(): Promise<void> {
     drawGauges()
   }
 
+  if (boot.needLogin && boot.cfg) {
+    login(boot.cfg, () => location.reload())
+    return
+  }
+  if (!isDemo && !api.roles.length) {
+    say(T.noRole, true)
+    api.signOut?.()
+    return
+  }
   setLang(lang)
   await refresh()
-  setInterval(refresh, api.mode === 'demo' ? 2000 : 5000)
+  setInterval(refresh, isDemo ? 2000 : 5000)
+
+  // ---------------------------------------------------------------- login screen
+  function login(cfg: Cfg, done: () => void): void {
+    setLang(lang)
+    const em = h('input', 'inp') as HTMLInputElement
+    em.type = 'email'
+    em.autocomplete = 'username'
+    const pw = h('input', 'inp') as HTMLInputElement
+    pw.type = 'password'
+    pw.autocomplete = 'current-password'
+    const msg = h('p', 'msg')
+    const go = h('button', 'btn go', T.go)
+    const demo = h('button', 'btn ghost', T.tryDemo)
+    demo.onclick = () => {
+      boot.needLogin = false
+      location.search = '?demo=1'
+    }
+    const card = h('div', 'card', h('h2', '', T.login), h('label', '', T.email), em, h('label', '', T.pass), pw, msg, go, demo)
+    const box = h('div', 'modal solid', card)
+    app.append(box)
+    let step: Step | null = null
+    let lab: HTMLElement | null = null
+    const fin = (s: Step) => {
+      if ('done' in s) {
+        save(s.done)
+        done()
+        return
+      }
+      step = s
+      em.remove()
+      card.querySelectorAll('label').forEach((l) => l.remove())
+      lab = h('label', '', s.challenge === 'NEW_PASSWORD_REQUIRED' ? T.newpass : T.code)
+      pw.value = ''
+      pw.type = s.challenge === 'NEW_PASSWORD_REQUIRED' ? 'password' : 'text'
+      pw.autocomplete = s.challenge === 'NEW_PASSWORD_REQUIRED' ? 'new-password' : 'one-time-code'
+      card.insertBefore(lab, pw)
+    }
+    go.onclick = async () => {
+      msg.textContent = ''
+      go.setAttribute('disabled', '')
+      try {
+        fin(step && 'challenge' in step ? await answer(cfg, step, pw.value.trim()) : await signIn(cfg, em.value.trim(), pw.value))
+      } catch (e) {
+        msg.textContent = (e as Error).message
+      } finally {
+        go.removeAttribute('disabled')
+      }
+    }
+    pw.onkeydown = (e) => {
+      if (e.key === 'Enter') go.click()
+    }
+  }
 }
 
 void main()

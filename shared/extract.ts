@@ -77,27 +77,28 @@ export function check(o: unknown): Rep | null {
 
 const K: Record<Need, RegExp> = {
   boat: /नाव|नौका|\bboats?\b|\bnaa?v\b|\bnauka\b|\bsteamer\b|\bndrf\b|\bsdrf\b/i,
-  food: /खाना|राशन|भोजन|भूख|चूड़ा|\bfood\b|\bkhana\b|\bration\b|\bbhookh\b|\bhungry\b|\bchura\b/i,
+  food: /खाना|राशन|भोजन|भूख|चूड़ा|अन्न|खाए के|खाय के|खइला|\bfood\b|\bkhana\b|\bration\b|\bbhookh\b|\bhungry\b|\bchura\b/i,
   water: /पीने का पानी|पेयजल|\bdrinking\b|\bpeene ka (paani|pani)\b|\bclean water\b|\bpaani nahi\b/i,
   medical:
-    /दवा|दवाई|अस्पताल|बीमार|घायल|साँप|सांप|डॉक्टर|\bmedicine\b|\bdawai\b|\bdava\b|\bdoctor\b|\bhospital\b|\bghayal\b|\binjured\b|\bsnake\b|\bsaanp\b|\bfever\b|\bbukhar\b|\bsick\b/i,
+    /दवा|दवाई|दवाइ|अस्पताल|बीमार|बेमार|डागदर|घायल|साँप|सांप|डॉक्टर|\bmedicine\b|\bdawai\b|\bdava\b|\bdoctor\b|\bhospital\b|\bghayal\b|\binjured\b|\bsnake\b|\bsaanp\b|\bfever\b|\bbukhar\b|\bsick\b/i,
   shelter: /तिरपाल|त्रिपाल|ऊँची जगह|ऊंची जगह|टेंट|\btent\b|\btirpal\b|\bshelter\b|\bunchi jagah\b|\bcamp\b/i,
 }
 
 const VUL =
-  /गर्भवती|प्रेग्नेंट|बुजुर्ग|बूढ़े|बुजुर्गों|बच्चे|बच्चों|विकलांग|दिव्यांग|\bpregnant\b|\bgarbhwati\b|\bgarbhvati\b|\bbujurg\b|\belderly\b|\bold (man|woman|people)\b|\bbachch?e\b|\bbacche\b|\bchild(ren)?\b|\binfant\b|\bbaby\b|\bdisabled\b|\bdivyang\b/i
+  /गर्भवती|गरभवती|प्रेग्नेंट|लइका|लरिका|लड़िका|नेना|बुढ़|बुजुर्ग|बूढ़े|बुजुर्गों|बच्चे|बच्चों|विकलांग|दिव्यांग|\bpregnant\b|\bgarbhwati\b|\bgarbhvati\b|\bbujurg\b|\belderly\b|\bold (man|woman|people)\b|\bbachch?e\b|\bbacche\b|\bchild(ren)?\b|\binfant\b|\bbaby\b|\bdisabled\b|\bdivyang\b/i
 
 // depth words -> centimetres. Order matters: deeper first.
 const DEPTH: [RegExp, number][] = [
   [/छत पर|छत के ऊपर|\bchhat par\b|\bchat par\b|\bon (the )?roof\b|\broof\b/i, 300],
-  [/गर्दन|\bgardan\b|\bneck\b/i, 150],
+  [/मचान|\bmachan\b/i, 200], // people sheltering on a raised platform
+  [/गर्दन|गरदन|\bgardan\b|\bneck\b/i, 150],
   [/छाती|\bchhati\b|\bchest\b/i, 130],
   [/कमर|\bkamar\b|\bwaist\b/i, 100],
   [/घुटन|घुटने|\bghutn[ae]\b|\bknee\b/i, 50],
   [/टखन|\btakhn[ae]\b|\bankle\b/i, 20],
 ]
 
-const DANGER = /डूब|बह गय|बह रह|ढह|गिर गय|\bdoob|\bbah (gaya|gayi|raha|rahe|rahi)\b|\bdrown|\bswept\b|\bcollaps/i
+const DANGER = /डूब|डूबल|बह गइल|बह गय|बह रह|ढह|गिर गय|\bdoob|\bbah (gaya|gayi|raha|rahe|rahi)\b|\bdrown|\bswept\b|\bcollaps/i
 
 export function rulex(raw: string): Rep {
   const t = ascii(raw)
@@ -115,7 +116,7 @@ export function rulex(raw: string): Rep {
 
   // "20 log", "20 लोग", "20 people", "family of 6", "6 सदस्य"
   let ppl: number | null = null
-  const p1 = /(\d{1,4})\s*(?:\+\s*)?(?:log|लोग|people|persons?|logon|sadasya|सदस्य|jan|जन|bachche|बच्चे|members?)(?![\p{L}\p{M}])/iu.exec(t)
+  const p1 = /(\d{1,4})\s*(?:\+\s*)?(?:log|लोग|people|persons?|logon|sadasya|सदस्य|jan|जन|जने|गोटे|आदमी|bachche|बच्चे|members?)(?![\p{L}\p{M}])/iu.exec(t)
   const p2 = /(?:family of|परिवार के|parivar ke)\s*(\d{1,3})/i.exec(t)
   if (p1) ppl = Number(p1[1])
   else if (p2) ppl = Number(p2[1])

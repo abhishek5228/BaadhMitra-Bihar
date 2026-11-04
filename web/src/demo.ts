@@ -1,6 +1,6 @@
 // Offline demo backend. It runs the SAME shared code as the Lambdas (redaction, extraction,
 // clustering, scoring, gauge states), so what you see in the demo is how the real pipeline behaves.
-import type { Alert, Gauge, Inc } from '../../shared/types'
+import type { Alert, AuditRow, Gauge, Inc } from '../../shared/types'
 import { STATIONS, simlvl } from '../../shared/stations'
 import { redact } from '../../shared/redact'
 import { rulex } from '../../shared/extract'
@@ -99,13 +99,16 @@ export function demoApi(): Api {
   }
   readGauges()
 
+  const trail: AuditRow[] = []
   const snapshot = (): Inc[] => {
     for (const [k, v] of incs) incs.set(k, { ...v, score: score(v) })
-    return [...incs.values()].filter((i) => i.status !== 'resolved').sort((a, b) => b.score - a.score)
+    return [...incs.values()].filter((i) => i.status !== 'resolved' && i.status !== 'dismissed').sort((a, b) => b.score - a.score)
   }
 
   return {
     mode: 'demo',
+    who: '',
+    roles: ['district_officer'],
     incidents: async () => snapshot(),
     gauges: async () => readGauges(),
     alerts: async () => [...alerts],
@@ -124,11 +127,19 @@ export function demoApi(): Api {
     assign: async (id, team) => {
       const i = incs.get(id)
       if (i) incs.set(id, { ...i, status: 'assigned', team, ver: i.ver + 1 })
+      trail.unshift({ id: String(Date.now()), ts: Date.now(), actor: 'demo', action: 'assigned', target: id, team })
     },
     resolve: async (id) => {
       const i = incs.get(id)
       if (i) incs.set(id, { ...i, status: 'resolved', ver: i.ver + 1 })
+      trail.unshift({ id: String(Date.now()), ts: Date.now(), actor: 'demo', action: 'resolved', target: id })
     },
+    dismiss: async (id) => {
+      const i = incs.get(id)
+      if (i) incs.set(id, { ...i, status: 'dismissed', ver: i.ver + 1 })
+      trail.unshift({ id: String(Date.now()), ts: Date.now(), actor: 'demo', action: 'dismissed', target: id })
+    },
+    audit: async () => [...trail],
     surge: () => {
       lift = 2.2
       SURGE.forEach((t, k) => setTimeout(() => ingest(t, 's' + k), 800 + k * 1400))
