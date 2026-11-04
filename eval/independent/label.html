@@ -12,6 +12,7 @@ label{display:block;margin:10px 0 4px;color:#9aa8bf;font-size:14px}.row{display:
 small{color:#9aa8bf}
 </style></head><body>
 <h1>Label flood messages</h1>
+<p id="err" style="color:#ff8a8a"></p>
 <p><small>Read each message and fill what the <b>message itself says</b>. Do not guess what is not written. Rules: LABELING.md. Your work saves in this browser; press Export when done.</small></p>
 <div id="setup">
   <label>Your name or code (so two people's labels can be compared)</label><input id="who">
@@ -32,6 +33,7 @@ small{color:#9aa8bf}
   <button id="prev" class="g">Back</button><button id="next">Save and next</button><button id="exp" class="g">Export CSV</button>
 </div>
 <script>
+window.onerror=(m,u,l)=>{document.getElementById('err').textContent='Error: '+m+' (line '+l+'). Please send this message to the project author.'};
 const NEEDS=['boat','food','water','medical','shelter'];
 const $=id=>document.getElementById(id); let M=[],A={},i=0,K='bm-label';
 $('needs').innerHTML=NEEDS.map(n=>`<label><input type="checkbox" value="${n}"> ${n}</label>`).join('');
@@ -40,10 +42,11 @@ function q(v){v=String(v??'');return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')
 function save(){const id=M[i].id;A[id]={place:$('place').value.trim(),ppl:$('ppl').value.trim(),depth:$('depth').value.trim(),sev:$('sev').value,vul:$('vul').checked,needs:[...document.querySelectorAll('#needs input:checked')].map(x=>x.value)};try{localStorage.setItem(K,JSON.stringify({M,A,i,who:$('who').value}))}catch(e){}}
 function show(){const m=M[i],a=A[m.id]||{};$('pos').textContent=`${i+1} / ${M.length}`;$('done').textContent=`labelled: ${Object.keys(A).length}`;$('msg').textContent=m.t;$('place').value=a.place||'';$('ppl').value=a.ppl||'';$('depth').value=a.depth||'';$('sev').value=a.sev||'';$('vul').checked=!!a.vul;document.querySelectorAll('#needs input').forEach(x=>x.checked=(a.needs||[]).includes(x.value))}
 function start(){$('setup').hidden=true;$('work').hidden=false;show()}
-$('go').onclick=async()=>{let t='';if($('file').files[0])t=await $('file').files[0].text();else t=$('paste').value;if(!t.trim())return alert('Add messages first');
+$('go').onclick=async()=>{try{await begin()}catch(e){$('err').textContent='Error: '+e.message}};
+async function begin(){let t='';if($('file').files[0])t=await $('file').files[0].text();else t=$('paste').value;if(!t.trim())return alert('Add messages first');
  if($('file').files[0]&&/\.csv$/i.test($('file').files[0].name)){const r=csv(t),h=r[0].map(x=>x.trim().toLowerCase()),ti=h.indexOf('t'),ii=h.indexOf('id');if(ti<0)return alert('CSV needs a column named t');M=r.slice(1).map((x,n)=>({id:ii>=0?x[ii]:String(n+1),t:x[ti]}))}
  else M=t.split(/\r?\n/).filter(x=>x.trim()).map((x,n)=>({id:String(n+1),t:x}));
- A={};i=0;start()};
+ A={};i=0;start()}
 $('next').onclick=()=>{if(!$('sev').value)return alert('Choose a severity');save();if(i<M.length-1){i++;show()}else $('done').textContent='All done. Press Export CSV.'};
 $('prev').onclick=()=>{if(i>0){save();i--;show()}};
 $('exp').onclick=()=>{save();const w=$('who').value.trim()||'anon';const L=['id,t,place,depth,ppl,needs,vul,sev,labeler'];for(const m of M){const a=A[m.id];if(!a)continue;L.push([m.id,m.t,a.place,a.depth,a.ppl,a.needs.join('|'),a.vul?'yes':'no',a.sev,w].map(q).join(','))}
