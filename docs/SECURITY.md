@@ -8,6 +8,8 @@ An honest description of what protects the system and what does not yet. It is n
 | --- | --- |
 | Staff login | Cognito user pool, no self sign-up, 12+ character passwords, one-hour tokens, role groups checked **on the server** for every call (hiding a button is only a courtesy) |
 | Roles | `viewer` read only; `control_room` can assign, resolve, dismiss; `district_officer` can also replay the dead-letter queue and read the activity log |
+| Field crews | Own Cognito group `field_team`. It can call only `/field/*`, and only incidents assigned to the crew's own team name can be changed by it. Staff roles cannot call crew routes and crews cannot read the queue |
+| Location | Crew location is shared only when the crew taps share, only while the page is open, rounded to the device's reported position, and expires after 12 hours |
 | Audit | Every assign, resolve, dismiss and replay writes an append-only record (who, what, when, which incident) kept about 400 days |
 | Public endpoints | Only citizen intake (`/reports`, `/upload-url`, `/subscribe`) and the signed WhatsApp webhook. Request validation, per-route throttles, per-sender hourly limit, optional WAF (`-c waf=true`) |
 | WhatsApp | HMAC signature check on the raw body, refuses all traffic if the secret is missing, secrets in Secrets Manager |
@@ -26,7 +28,8 @@ An honest description of what protects the system and what does not yet. It is n
 4. **`/subscribe`** lets anyone ask AWS to send a confirmation email to an address. It is throttled to 1 request per second; consider removing it from the public API and subscribing control-room staff directly.
 5. No independent penetration test, no formal threat model review, no dependency scanning beyond CI.
 6. SMS alerts in India need DLT registration; only email works out of the box.
-7. Cognito tokens are kept in `sessionStorage`, so a cross-site scripting bug would expose them. The app avoids `innerHTML`, and CloudFront sends security headers, but a strict Content Security Policy is not set yet.
+7. Crew accounts are shared per team, so the audit trail shows the team, not the individual. Issue one account per person if you need individual accountability.
+8. Cognito tokens are kept in `sessionStorage`, so a cross-site scripting bug would expose them. The app avoids `innerHTML`, and CloudFront sends security headers, but a strict Content Security Policy is not set yet.
 
 ## Reporting a problem
 

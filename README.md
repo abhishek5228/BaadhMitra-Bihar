@@ -6,7 +6,7 @@
 Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicated rescue queue on a live 3D map, plus early river warnings in Hindi voice.
 
 [![CI](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml/badge.svg)](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml)
-![tests](https://img.shields.io/badge/tests-56%20passing-2fbf71)
+![tests](https://img.shields.io/badge/tests-66%20passing-2fbf71)
 ![AWS](https://img.shields.io/badge/AWS-Lambda%20%C2%B7%20SQS%20%C2%B7%20DynamoDB%20%C2%B7%20Bedrock%20%C2%B7%20Cognito-ff9900)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![three.js](https://img.shields.io/badge/3D-three.js-black)
@@ -41,6 +41,13 @@ Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicat
 
 <table>
   <tr>
+    <td width="50%"><img src="docs/assets/dash-teams.png" alt="Dashboard showing overdue badges, a team marker on the map and the dispatch panel"/><br/><sub><b>Overdue clock + live crews.</b> Amber and red badges for waiting incidents; blue markers for crews that share their location.</sub></td>
+    <td width="50%"><img src="docs/assets/report.png" alt="Response time and accuracy report"/><br/><sub><b>Response-time report.</b> Time to assign and resolve, who closed it, and how often dispatchers agreed with the system.</sub></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
     <td width="260" align="center"><img src="docs/assets/citizen.png" alt="Hindi-first citizen report page on a phone" width="240"/></td>
     <td valign="top">
 
@@ -48,6 +55,15 @@ Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicat
 Hindi first, big buttons, installable as a PWA. A report typed offline is saved on the phone and sent when the network returns. It never asks for a phone number, shows **112** at the top, and says plainly that a report is not a rescue guarantee.
 
 Try it: [`/report.html`](https://dr2l39p60xv7s.cloudfront.net/report.html)
+
+</td>
+  </tr>
+  <tr>
+    <td width="260" align="center"><img src="docs/assets/field.png" alt="Field team phone page with assigned incident and one-tap progress buttons" width="240"/></td>
+    <td valign="top">
+
+### The rescue crew's page
+`/field.html`, sign-in required (role `field_team`). Shows only the incidents assigned to that crew, with a navigation link and big one-tap buttons. Taps are queued on the phone and sent when the signal returns. "Done" and "nobody found" need a second tap to confirm, and "nobody found" sends the incident back to the queue flagged for a human.
 
 </td>
   </tr>
@@ -63,6 +79,9 @@ Try it: [`/report.html`](https://dr2l39p60xv7s.cloudfront.net/report.html)
 | 🧩 **Merges and ranks** | Reports from the same area merge into one incident. Priority weighs severity, **independent** reporters, people at risk, children/elderly/medical need. One phone repeating itself counts once. |
 | 🗺️ **Shows it in 3D** | Three.js Bihar terrain, rivers, a flood plane that rises with the gauges, rain, incident beacons and boats that sail to assigned incidents. |
 | 📲 **Takes reports anywhere** | Offline-first phone page, voice notes, location pin, and a signed WhatsApp webhook (Meta approval needed). |
+| 🚤 **Closes the loop with rescue crews** | Crews get their own phone page: assigned incident, navigation link, one-tap progress (on the way / arrived / done / nobody found) that survives bad signal, and optional live location shown on the 3D map. A crew's "done" is what resolves an incident. |
+| ⏰ **Never lets a request sit** | Overdue clock on every incident (no team assigned, or a team gone silent). Badges on the queue, and an alert to the ops topic once per level. |
+| 📊 **Measures itself** | Dispatchers mark whether the system read an incident correctly. A report shows time to assign, time to resolve, who closed what, and the dispatchers' agreement rate, so accuracy comes from real use instead of guesses. |
 | 🔐 **Protects the control room** | Cognito roles, server-side checks, append-only audit log, per-sender rate limit, API throttles, optional WAF. |
 | 🌊 **Warns early, honestly** | Gauge poller with Hindi voice from Amazon Polly. With a real feed configured, simulation is never used; stale readings are greyed out and never alert. |
 
@@ -137,7 +156,7 @@ shared/     code used by Lambdas, the dashboard and tests (geohash, gazetteer, r
             extractor, scoring, alert wording, gauge simulator)
 backend/    Lambda handlers: ingest, voice, extract, api, gauge, whatsapp (+ lib: intake, auth, feed, wa)
 infra/      AWS CDK stack (TypeScript)
-web/        3D dispatcher dashboard (Three.js + Vite) and the offline citizen report page
+web/        3D dispatcher dashboard (Three.js + Vite), offline citizen report page, rescue-crew page
 docs/       pilot plan, deploy checklist, runbook, security, privacy, WhatsApp, pitch, demo script
 scripts/    deploy, village importer, load test
 eval/       labeled messages + benchmark script
@@ -180,13 +199,15 @@ If Bedrock access or the model id is wrong, the system keeps working on the rule
 | `POST /subscribe` | public, throttled | email for alerts |
 | `GET/POST /whatsapp` | public, HMAC signature checked | Meta webhook |
 | `GET /incidents`, `/gauges`, `/alerts`, `/stats`, `/unplaced` | Cognito, any role | dispatcher data |
-| `POST /incidents/{id}/assign`, `/resolve`, `/dismiss` | Cognito, `control_room` or `district_officer` | dispatch actions (audited) |
-| `POST /admin/replay`, `GET /audit` | Cognito, `district_officer` | redrive the dead-letter queue, read the activity log |
+| `POST /incidents/{id}/assign`, `/resolve`, `/dismiss`, `/feedback` | Cognito, `control_room` or `district_officer` | dispatch actions and the accuracy verdict (audited) |
+| `GET /teams`, `GET /metrics` | Cognito, any staff role | crew positions, response-time report |
+| `POST /field/ping`, `GET /field/mine`, `POST /field/{id}/progress` | Cognito, `field_team` only | the crew's own phone |
+| `POST /admin/replay`, `GET /audit`, `GET /feedback` | Cognito, `district_officer` | redrive the dead-letter queue, activity log, labelled-feedback export |
 
 ## Testing and evaluation
 
 ```bash
-npm run typecheck && npm test      # 56 tests: core logic, the Lambda pipeline against a fake AWS, roles and audit, WhatsApp signatures, feeds, offline queue, CDK guarantees
+npm run typecheck && npm test      # 66 tests: core logic, the Lambda pipeline against a fake AWS, roles and audit, WhatsApp signatures, feeds, offline queue, CDK guarantees
 npm run eval                       # extractor benchmark (add LLM=1 MODEL=<id> to score Bedrock)
 npx cdk synth                      # validates the CloudFormation template
 npm run loadtest -- <api> 200 20 --yes   # load test the public endpoint (use a staging stack)
@@ -202,4 +223,5 @@ An honest note on the benchmark: `eval/labeled.json` is a starter set written by
 - MFA enrolment is not in the dashboard yet; CORS is open for demo convenience; no independent penetration test. See `docs/SECURITY.md` for the full list.
 - SMS delivery in India requires DLT registration with SNS; email alerts work immediately.
 - The benchmark set is author-written; real accuracy is measured in a pilot (`docs/PILOT.md`).
-- Next: district-boundary heatmap, a list screen for unplaced reports, field-team PWA.
+- Crew location is only as good as the phone and the crew's choice to share it. The overdue thresholds (15/30 and 30/60 minutes, 60/120 for a silent crew) are starting values to agree with the control room, not standards.
+- Next: resource-aware team suggestions, IVR / missed-call intake, district-boundary heatmap, a list screen for unplaced reports.

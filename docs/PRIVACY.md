@@ -11,6 +11,8 @@ This describes what the system does with personal data. It is written to help a 
 | Sender identifier | to count independent reporters and rate-limit | a salted hash only. The raw phone number is never stored |
 | Incident record (place, people, needs, snippets of redacted text) | the rescue queue | until the department resolves or deletes it; DynamoDB TTL can be configured |
 | Staff email and actions | login and audit | audit about 400 days |
+| Rescue crew position (only if the crew taps share) | show crews on the map and start boats from where they really are | latest position only, expires after 12 hours |
+| Dispatcher feedback on an incident (verdict, which fields were wrong, redacted message snippets) | measure accuracy | about 400 days |
 
 Phone numbers, Aadhaar-style 12-digit numbers, UPI ids and emails written inside a message are removed before storage and before any text goes to the language model. The redaction is rule based and can miss unusual formats.
 

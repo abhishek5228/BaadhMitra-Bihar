@@ -122,3 +122,35 @@ describe('citizen report page', async () => {
     expect(got).toHaveLength(2)
   })
 })
+
+describe('overdue clock and response metrics', async () => {
+  const { sla, metrics } = await import('../shared/sla')
+  const min = 60_000
+  const base = { status: 'open', score: 80, first: 0, last: 0 } as any
+  it('urgent incidents get half the time before they are overdue', () => {
+    expect(sla(base, 10 * min).lvl).toBe(0)
+    expect(sla(base, 16 * min).lvl).toBe(1)
+    expect(sla(base, 31 * min).lvl).toBe(2)
+    expect(sla({ ...base, score: 40 }, 31 * min).lvl).toBe(1)
+    expect(sla({ ...base, score: 40 }, 61 * min).lvl).toBe(2)
+  })
+  it('an assigned incident goes overdue when the team is silent, and a field update resets it', () => {
+    const a = { ...base, status: 'assigned', asg: 0 }
+    expect(sla(a, 59 * min).lvl).toBe(0)
+    expect(sla(a, 121 * min)).toMatchObject({ lvl: 2, why: 'silent' })
+    expect(sla({ ...a, fts: 100 * min }, 121 * min).lvl).toBe(0)
+  })
+  it('resolved or dismissed incidents are never overdue', () => {
+    expect(sla({ ...base, status: 'resolved' }, 9999 * min).lvl).toBe(0)
+  })
+  it('metrics use only recorded times and the latest verdict per incident', () => {
+    const inc = (id: string, asg: number, res?: number, by?: string) => ({ ...base, id, status: res ? 'resolved' : 'assigned', asg: asg * min, res: res ? res * min : undefined, by })
+    const fb = (inc: string, ts: number, ok: boolean, wrong: string[] = []) => ({ id: inc + ts, ts, actor: 'a', inc, ok, wrong, place: '', ppl: 0, needs: [], sev: 1, texts: [] })
+    const m = metrics([inc('a', 10, 70, 'team'), inc('b', 30, 90, 'control'), inc('c', 50)] as any, [fb('a', 1, false, ['place']), fb('a', 2, true), fb('b', 1, false, ['people'])] as any, 200 * min)
+    expect(m.toAssign).toMatchObject({ n: 3, p50: 30 })
+    expect(m.toResolve).toMatchObject({ n: 2, p50: 60 })
+    expect(m).toMatchObject({ teamClosed: 1, controlClosed: 1, resolved: 2, assigned: 1 })
+    expect(m.fb).toMatchObject({ n: 2, ok: 1, rate: 0.5, wrong: { people: 1, place: 0 } }) // a's corrected verdict replaced the first
+    expect(metrics([], [], 0).fb.rate).toBeNull()
+  })
+})

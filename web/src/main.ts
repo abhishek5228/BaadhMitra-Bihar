@@ -1,8 +1,11 @@
 import './style.css'
-import type { Alert, Gauge, Inc, Need } from '../../shared/types'
+import type { Alert, Gauge, Inc, Need, Team, Wrong } from '../../shared/types'
+import { WRONGS } from '../../shared/types'
+import { sla } from '../../shared/sla'
 import { inBihar } from '../../shared/geo'
 import { connect, Expired, type Api, type Pin, type St } from './api'
-import { answer, save, signIn, type Cfg, type Step } from './auth'
+import type { Cfg } from './auth'
+import { showLogin } from './login'
 import { dict, type Lang } from './i18n'
 import { World, urg } from './scene'
 
@@ -40,6 +43,7 @@ async function main(): Promise<void> {
   let incs: Inc[] = []
   let gs: Gauge[] = []
   let als: Alert[] = []
+  let tms: Team[] = []
   let st: St = { reports: 0, incidents: 0, rule: 0, review: 0, dedup: 0, unpl: 0 }
   let sel = ''
   let pin: Pin | undefined
@@ -66,7 +70,8 @@ async function main(): Promise<void> {
 
   // ------------------------------------------------------------------ header
   function drawTop(): void {
-    if (!changed('top', [lang, st, incs.length, api.mode, api.who])) return
+    const late = incs.filter((i) => sla(i, Date.now()).lvl === 2).length
+    if (!changed('top', [lang, st, incs.length, api.mode, api.who, late])) return
     const mode = h('span', 'mode ' + api.mode, api.mode === 'live' ? T.live : T.demo)
     const mk = (label: string, fn: () => void) => {
       const b = h('button', 'btn', label)
@@ -76,12 +81,13 @@ async function main(): Promise<void> {
     const stat = (v: string, l: string) => h('div', 'stat', h('b', '', v), h('span', '', l))
     const kids: K[] = [
       h('div', 'brand', h('div', 'logo', '🌊'), h('div', '', h('h1', '', T.title), h('p', '', T.sub))),
-      h('div', 'stats', stat(String(st.reports), T.stats.reports), stat(String(incs.length), T.stats.inc), stat(Math.round(st.dedup * 100) + '%', T.stats.dedup), stat(String(st.rule), T.stats.rule), st.unpl ? stat(String(st.unpl), T.stats.unpl) : null),
+      h('div', 'stats', stat(String(st.reports), T.stats.reports), stat(String(incs.length), T.stats.inc), stat(Math.round(st.dedup * 100) + '%', T.stats.dedup), stat(String(st.rule), T.stats.rule), st.unpl ? stat(String(st.unpl), T.stats.unpl) : null, late ? stat(String(late), '⏰ ' + T.over) : null),
       h('div', 'acts', mode),
     ]
     const acts = kids[2] as HTMLElement
     if (api.surge) acts.append(mk('⚡ ' + T.surge, () => api.surge?.()))
     if (boot.cfg && isDemo) acts.append(mk('🔑 ' + T.login, () => (location.href = location.pathname)))
+    acts.append(mk('📊 ' + T.report, openReport))
     if (can('admin')) acts.append(mk('🧾 ' + T.audit, openAudit))
     if (api.who) acts.append(h('span', 'who', api.who + (api.roles.length ? '' : ' ⚠')))
     if (api.signOut) acts.append(mk(T.signout, () => api.signOut?.()))
@@ -92,7 +98,7 @@ async function main(): Promise<void> {
   // ------------------------------------------------------------------ roles
   // The server enforces these. Hiding a button is only a courtesy; it is never the protection.
   const can = (a: 'read' | 'dispatch' | 'admin'): boolean =>
-    isDemo ? true : a === 'read' ? api.roles.length > 0 : a === 'dispatch' ? api.roles.some((r) => r !== 'viewer') : api.roles.includes('district_officer')
+    isDemo ? true : a === 'read' ? api.roles.some((r) => r !== 'field_team') : a === 'dispatch' ? api.roles.some((r) => r === 'control_room' || r === 'district_officer') : api.roles.includes('district_officer')
 
   async function openAudit(): Promise<void> {
     try {
@@ -111,7 +117,7 @@ async function main(): Promise<void> {
 
   // ------------------------------------------------------------------ queue
   function drawQueue(): void {
-    if (!changed('q', [lang, sel, als.map((a) => a.id), incs.map((i) => [i.id, i.score, i.n, i.ppl, i.status, i.review, ago(i.last)])])) return
+    if (!changed('q', [lang, sel, als.map((a) => a.id), incs.map((i) => [i.id, i.score, i.n, i.ppl, i.status, i.review, ago(i.last), sla(i, Date.now()).lvl, Math.floor(sla(i, Date.now()).mins / 5)])])) return
     const keep = left.querySelector('.list')?.scrollTop ?? 0 // a refresh must not yank the list back to the top
     const list = h('div', 'list')
     if (!incs.length) list.append(h('p', 'empty', T.none))
@@ -121,7 +127,8 @@ async function main(): Promise<void> {
         'row' + (i.id === sel ? ' on' : ''),
         h('span', 'sc', String(i.score)),
         h('span', 'rb', h('b', '', i.place), h('small', '', `${i.n} ${T.reporters} · ${ago(i.last)}${i.ppl ? ` · ${i.ppl} ${T.people}` : ''}`)),
-        i.status === 'assigned' ? h('em', 'chip blue', T.assigned) : i.review ? h('em', 'chip warn', '?') : null,
+        slaChip(i),
+        i.status === 'assigned' ? h('em', 'chip blue', i.fstate ? T.fstate[i.fstate] : T.assigned) : i.review ? h('em', 'chip warn', '?') : null,
       )
       ;(row.firstChild as HTMLElement).style.background = col(i.score)
       row.onclick = () => pickInc(i.id)
@@ -137,6 +144,14 @@ async function main(): Promise<void> {
     }
     put(left, h('h2', '', T.queue), list, als.length ? h('h2', '', T.alerts) : null, als.length ? gl : null)
     list.scrollTop = keep
+  }
+
+  function slaChip(i: Inc): HTMLElement | null {
+    const s = sla(i, Date.now())
+    if (!s.lvl || !s.why) return null
+    const e = h('em', 'chip ' + (s.lvl === 2 ? 'late' : 'warn'), `⏰ ${s.mins}m`)
+    e.title = `${T.sla[s.why]}: ${s.mins} ${T.mins}`
+    return e
   }
 
   function speak(a: Alert): void {
@@ -183,7 +198,8 @@ async function main(): Promise<void> {
       drawQueue()
     }
     const team = h('select', 'sel') as HTMLSelectElement
-    for (const t of TEAMS) team.append(new Option(t, t))
+    const roster = tms.length ? tms : TEAMS.map((id) => ({ id, busy: false }) as Team)
+    for (const t of roster) team.append(new Option(t.id + (t.busy ? ' · ' + T.assigned : ''), t.id))
     const go = h('button', 'btn go', '🚤 ' + T.assign)
     go.onclick = async () => {
       try {
@@ -214,6 +230,7 @@ async function main(): Promise<void> {
         say(T.err, true)
       }
     }
+    const fb = feedbackBox(i)
     const sn = h('div', 'snips')
     for (const s of [...i.snips].reverse()) sn.append(h('blockquote', '', h('p', '', s.t), h('small', '', `${ago(s.ts)} · ${s.src === 'llm' ? 'AI' : 'rules'} · ${Math.round(s.conf * 100)}%`)))
     const score = h('div', 'big', String(i.score))
@@ -228,10 +245,93 @@ async function main(): Promise<void> {
       h('div', 'fld', h('span', '', T.needs), h('div', 'chips', ...(i.needs.length ? i.needs.map(need) : [h('b', '', '—')]))),
       h('div', 'fld col', h('span', '', `${T.conf}: ${Math.round(i.conf * 100)}%`), cf),
       i.review ? h('div', 'flag amber', '👁 ' + T.review) : null,
+      i.fstate ? h('div', 'flag blue', '🚤 ' + T.fstate[i.fstate]) : null,
+      (() => { const s = sla(i, Date.now()); return s.lvl && s.why ? h('div', 'flag ' + (s.lvl === 2 ? 'late' : 'amber'), `⏰ ${T.sla[s.why]}: ${s.mins} ${T.mins}`) : null })(),
       h('h3', '', T.msgs),
       sn,
+      can('dispatch') ? fb : null,
       i.status === 'resolved' ? null : can('dispatch') ? h('div', 'dispatch', team, go, done, dis) : h('div', 'flag', T.readonly),
     )
+  }
+
+  /** The dispatcher's verdict on what the system read. This is what turns the pilot into a measured accuracy. */
+  function feedbackBox(i: Inc): HTMLElement {
+    const box = h('div', 'fbk', h('b', '', T.fbq))
+    const done = (m: string) => put(box, h('small', '', m))
+    const row = h('div', 'crow')
+    const yes = h('button', 'btn ghost', '✔ ' + T.fbok)
+    const no = h('button', 'btn ghost', '✖ ' + T.fbno)
+    const picks = new Set<Wrong>()
+    const chips = h('div', 'chips hide')
+    for (const w of WRONGS) {
+      const c = h('button', 'chip', T.wrong[w])
+      c.onclick = () => {
+        picks.has(w) ? picks.delete(w) : picks.add(w)
+        c.classList.toggle('on', picks.has(w))
+      }
+      chips.append(c)
+    }
+    const send = h('button', 'btn go hide', T.fbsend)
+    const submit = async (ok: boolean) => {
+      try {
+        await api.feedback(i.id, ok, [...picks])
+        done(T.fbthx)
+      } catch {
+        say(T.err, true)
+      }
+    }
+    yes.onclick = () => void submit(true)
+    no.onclick = () => {
+      chips.classList.remove('hide')
+      send.classList.remove('hide')
+    }
+    send.onclick = () => void submit(false)
+    row.append(yes, no)
+    box.append(row, chips, send)
+    return box
+  }
+
+  // ------------------------------------------------------------------ response-time report
+  async function openReport(): Promise<void> {
+    try {
+      const m = await api.metrics()
+      const box = h('div', 'modal')
+      const x = h('button', 'btn ghost close', '✕')
+      x.onclick = () => box.remove()
+      const pc = (p: { n: number; p50: number | null; p90: number | null }) => (p.n ? `${p.p50} / ${p.p90} ${T.mins} (n=${p.n})` : '—')
+      const row = (k: string, v: string) => h('tr', '', h('td', '', k), h('td', '', v))
+      const tb = h('table', 'tbl')
+      tb.append(
+        row(T.rcount, `${m.incidents} · ${T.open} ${m.open} · ${T.assigned} ${m.assigned} · ✓ ${m.resolved}`),
+        row('⏰ ' + T.over, String(m.overdue)),
+        row(T.rassign + ' (p50 / p90)', pc(m.toAssign)),
+        row(T.rresolve + ' (p50 / p90)', pc(m.toResolve)),
+        row(T.closedBy.team + ' / ' + T.closedBy.control, `${m.teamClosed} / ${m.controlClosed}`),
+        row(T.rfb, m.fb.n ? `${Math.round((m.fb.rate ?? 0) * 100)}% (n=${m.fb.n})` : '—'),
+        ...WRONGS.filter((w) => m.fb.wrong[w]).map((w) => row('  ✖ ' + T.wrong[w], String(m.fb.wrong[w]))),
+      )
+      const card = h('div', 'card', x, h('h2', '', T.rtitle), tb, h('small', 'mu', T.rnote))
+      if (can('admin')) {
+        const dl = h('button', 'btn', '⬇ ' + T.rexport)
+        dl.onclick = async () => {
+          try {
+            const rows = await api.fbExport()
+            const a = document.createElement('a')
+            a.href = URL.createObjectURL(new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' }))
+            a.download = 'baadhmitra-feedback.json'
+            a.click()
+            URL.revokeObjectURL(a.href)
+          } catch {
+            say(T.err, true)
+          }
+        }
+        card.append(dl)
+      }
+      box.append(card)
+      app.append(box)
+    } catch {
+      say(T.err, true)
+    }
   }
 
   // ------------------------------------------------------------------ composer
@@ -330,7 +430,7 @@ async function main(): Promise<void> {
   // ------------------------------------------------------------------ data loop
   async function refresh(): Promise<void> {
     try {
-      ;[incs, gs, als, st] = await Promise.all([api.incidents(), api.gauges(), api.alerts(), api.stats()])
+      ;[incs, gs, als, st, tms] = await Promise.all([api.incidents(), api.gauges(), api.alerts(), api.stats(), api.teams().catch(() => [] as Team[])])
     } catch (e) {
       if (e instanceof Expired) {
         alert(T.sess)
@@ -350,6 +450,7 @@ async function main(): Promise<void> {
     }
     first = false
     world.setGauges(gs)
+    world.setTeams(tms)
     world.setIncidents(incs)
     drawTop()
     drawQueue()
@@ -359,6 +460,10 @@ async function main(): Promise<void> {
 
   if (boot.needLogin && boot.cfg) {
     login(boot.cfg, () => location.reload())
+    return
+  }
+  if (!isDemo && api.roles.length && api.roles.every((r) => r === 'field_team')) {
+    location.replace('field.html') // a rescue crew has its own phone page
     return
   }
   if (!isDemo && !api.roles.length) {
@@ -373,53 +478,11 @@ async function main(): Promise<void> {
   // ---------------------------------------------------------------- login screen
   function login(cfg: Cfg, done: () => void): void {
     setLang(lang)
-    const em = h('input', 'inp') as HTMLInputElement
-    em.type = 'email'
-    em.autocomplete = 'username'
-    const pw = h('input', 'inp') as HTMLInputElement
-    pw.type = 'password'
-    pw.autocomplete = 'current-password'
-    const msg = h('p', 'msg')
-    const go = h('button', 'btn go', T.go)
     const demo = h('button', 'btn ghost', T.tryDemo)
     demo.onclick = () => {
-      boot.needLogin = false
       location.search = '?demo=1'
     }
-    const card = h('div', 'card', h('h2', '', T.login), h('label', '', T.email), em, h('label', '', T.pass), pw, msg, go, demo)
-    const box = h('div', 'modal solid', card)
-    app.append(box)
-    let step: Step | null = null
-    let lab: HTMLElement | null = null
-    const fin = (s: Step) => {
-      if ('done' in s) {
-        save(s.done)
-        done()
-        return
-      }
-      step = s
-      em.remove()
-      card.querySelectorAll('label').forEach((l) => l.remove())
-      lab = h('label', '', s.challenge === 'NEW_PASSWORD_REQUIRED' ? T.newpass : T.code)
-      pw.value = ''
-      pw.type = s.challenge === 'NEW_PASSWORD_REQUIRED' ? 'password' : 'text'
-      pw.autocomplete = s.challenge === 'NEW_PASSWORD_REQUIRED' ? 'new-password' : 'one-time-code'
-      card.insertBefore(lab, pw)
-    }
-    go.onclick = async () => {
-      msg.textContent = ''
-      go.setAttribute('disabled', '')
-      try {
-        fin(step && 'challenge' in step ? await answer(cfg, step, pw.value.trim()) : await signIn(cfg, em.value.trim(), pw.value))
-      } catch (e) {
-        msg.textContent = (e as Error).message
-      } finally {
-        go.removeAttribute('disabled')
-      }
-    }
-    pw.onkeydown = (e) => {
-      if (e.key === 'Enter') go.click()
-    }
+    showLogin(app, cfg, { login: T.login, email: T.email, pass: T.pass, newpass: T.newpass, code: T.code, go: T.go }, done, demo)
   }
 }
 

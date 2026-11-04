@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js'
 import { BIHAR } from '../../shared/geo'
 import { PLACES } from '../../shared/gazetteer'
-import type { Gauge, Inc } from '../../shared/types'
+import type { Gauge, Inc, Team } from '../../shared/types'
 
 // Map size in scene units: 20 units per degree.
 const W = (BIHAR.e - BIHAR.w) * 20
@@ -93,6 +93,7 @@ export class World {
   private wat: THREE.Mesh
   private rain: THREE.Points
   private bcn = new Map<string, Bcn>()
+  private tm = new Map<string, { g: THREE.Group; tag: CSS2DObject; pos: THREE.Vector3 }>()
   private tow = new Map<string, { g: THREE.Group; cap: THREE.Mesh; tag: CSS2DObject }>()
   private ray = new THREE.Raycaster()
   private ptr = new THREE.Vector2()
@@ -257,6 +258,35 @@ export class World {
     this.flood = gs.length ? f / gs.length : 0
   }
 
+  /** Live positions of rescue teams (only teams that chose to share location). */
+  setTeams(list: Team[]): void {
+    const live = new Set(list.map((t) => t.id))
+    for (const [id, m] of this.tm)
+      if (!live.has(id)) {
+        this.sc.remove(m.g)
+        this.sc.remove(m.tag)
+        this.tm.delete(id)
+      }
+    for (const t of list) {
+      const x = px(t.lon)
+      const z = pz(t.lat)
+      const y = Math.max(hAt(t.lat, t.lon), this.waterY()) + 0.5
+      let m = this.tm.get(t.id)
+      if (!m) {
+        const g = new THREE.Group()
+        const dia = new THREE.Mesh(new THREE.OctahedronGeometry(0.45), new THREE.MeshStandardMaterial({ color: '#4da3ff', emissive: '#2a6fd0', emissiveIntensity: 0.7 }))
+        g.add(dia)
+        this.sc.add(g)
+        m = { g, tag: this.label('', x, y + 1, z, 'team'), pos: new THREE.Vector3(x, y, z) }
+        this.tm.set(t.id, m)
+      }
+      m.pos.set(x, y, z)
+      m.g.position.copy(m.pos)
+      m.tag.position.set(x, y + 1, z)
+      m.tag.element.textContent = t.id + (t.busy ? ' · on mission' : '')
+    }
+  }
+
   setIncidents(list: Inc[]): void {
     const live = new Set(list.map((i) => i.id))
     for (const [id, b] of this.bcn)
@@ -298,6 +328,13 @@ export class World {
       b.tag.element.className = 'lbl inc' + (i.review ? ' rev' : '')
       b.tag.visible = top.has(i.id) || i.id === this.sel
       if (i.status === 'assigned' && !b.boat) b.boat = this.spawnBoat(b)
+      if (i.status === 'assigned' && b.boat) {
+        // The boat starts where the team really is (if it shares location) and is on station once the team says "arrived".
+        const u = b.boat.userData as { from: THREE.Vector3; t: number }
+        const tp = i.team ? this.tm.get(i.team) : undefined
+        if (tp) u.from.copy(tp.pos)
+        if (i.fstate === 'arrived') u.t = 1
+      }
       if (i.status !== 'assigned' && b.boat) {
         this.sc.remove(b.boat)
         b.boat = undefined

@@ -16,6 +16,22 @@ For the people operating BaadhMitra in a flood control room. BaadhMitra ranks an
 - The header shows a count of **unplaced reports**: messages that could not be put on the map. Someone should read them (`GET /unplaced`; a list screen is not built into the dashboard yet) and place or forward them by hand.
 - A score is a suggestion. Children, elderly, pregnancy and medical need raise it, but a reporter can be wrong in both directions.
 
+## Overdue clock
+
+Each queue row can show a badge such as `⏰ 22m`: amber is a warning, red is overdue. The header counts overdue incidents.
+
+- *No team assigned:* urgent incidents (score 75+) warn at 15 min and are overdue at 30; others at 30 and 60.
+- *Team gone silent:* an assigned incident with no word from the crew warns at 60 min and is overdue at 120.
+- An overdue incident also sends one alert to the ops topic. Assigning a team, a crew update, or a new report restarts the clock. These times are starting values: agree them with your district and change `shared/sla.ts`.
+
+## Rescue crews
+
+Crews use `/field.html`. They see only their own incidents and tap *on the way*, *arrived*, *rescue complete*, or *nobody found*. *Complete* resolves the incident (shown as "closed by team"). *Nobody found* returns it to the queue marked for review: **read it again, do not just reassign blindly.** If a crew shows no position, it has not shared its location.
+
+## Telling the system when it is wrong
+
+Open an incident and answer *Did the system read this correctly?* If not, tick what was wrong (place, people, needs, severity). The **Report** button shows response times and how often you agreed. A district officer can export the verdicts. This is the honest way to measure accuracy, so please use it on real incidents.
+
 ## When something looks wrong
 
 | Situation | Do this |
@@ -34,4 +50,4 @@ For the people operating BaadhMitra in a flood control room. BaadhMitra ranks an
 
 ## Review after each event
 
-Export the activity log (district officer), count reports, dismissed, resolved, and unplaced, and write down what the system got wrong. That list is the only honest accuracy measure.
+Open **Report** and the activity log (district officer), count reports, dismissed, resolved, and unplaced, and write down what the system got wrong. That list is the only honest accuracy measure.

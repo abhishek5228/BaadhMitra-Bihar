@@ -80,13 +80,13 @@ process.env.QURL = 'q'
 process.env.TOPIC = 'arn:topic'
 process.env.MODEL = 'm'
 
-const ev = (resource: string, method: string, b?: unknown, pp?: Record<string, string>, groups: string | null = 'district_officer') =>
+const ev = (resource: string, method: string, b?: unknown, pp?: Record<string, string>, groups: string | null = 'district_officer', extra: Record<string, string> = {}) =>
   ({
     resource,
     httpMethod: method,
     body: b === undefined ? null : JSON.stringify(b),
     pathParameters: pp ?? null,
-    requestContext: { identity: { sourceIp: '1.2.3.4' }, authorizer: groups === null ? undefined : { claims: { sub: 's1', email: 'officer@example.gov.in', 'cognito:groups': groups } } },
+    requestContext: { identity: { sourceIp: '1.2.3.4' }, authorizer: groups === null ? undefined : { claims: { sub: 's1', email: 'officer@example.gov.in', 'cognito:groups': groups, ...extra } } },
   }) as any
 
 beforeEach(() => {
@@ -207,5 +207,92 @@ describe('text report -> queue -> extractor -> dispatcher API', async () => {
     await ing(ev('/reports', 'POST', { text: 'Kursela me paani chhat par, 6 log, naav chahiye abhi', sender: 'u2' }))
     await drain()
     expect(JSON.parse((await api(ev('/incidents', 'GET'))).body).items).toHaveLength(1)
+  })
+
+  // ---- field teams, overdue sweep, feedback and metrics --------------------------------------
+  const crew = (r: string, m: string, b?: unknown, pp?: Record<string, string>, name = 'NDRF Team A') => ev(r, m, b, pp, 'field_team', { email: 'crew@example.gov.in', name })
+
+  const seed = async () => {
+    await ing(ev('/reports', 'POST', { text: 'Kursela me paani chhat par, 6 log, naav chahiye', sender: 'u1' }))
+    await drain()
+    return JSON.parse((await api(ev('/incidents', 'GET'))).body).items[0].id as string
+  }
+
+  it('field team flow: ping, see only own incident, report progress, close it', async () => {
+    const id = await seed()
+    expect((await api(crew('/field/ping', 'POST', { lat: 25.4, lon: 87.2 }))).statusCode).toBe(200)
+    expect((await api(crew('/field/ping', 'POST', { lat: 10, lon: 10 }))).statusCode).toBe(400) // outside Bihar
+    await api(ev('/incidents/{id}/assign', 'POST', { team: 'NDRF Team A' }, { id }))
+    const teams = JSON.parse((await api(ev('/teams', 'GET'))).body).items
+    expect(teams).toEqual([expect.objectContaining({ id: 'NDRF Team A', busy: true })])
+
+    expect(JSON.parse((await api(crew('/field/mine', 'GET'))).body).items).toHaveLength(1)
+    expect(JSON.parse((await api(crew('/field/mine', 'GET', undefined, undefined, 'Other Team'))).body).items).toHaveLength(0)
+    expect((await api(crew('/field/{id}/progress', 'POST', { state: 'enroute' }, { id }, 'Other Team'))).statusCode).toBe(403)
+    expect((await api(crew('/field/{id}/progress', 'POST', { state: 'teleported' }, { id }))).statusCode).toBe(400)
+
+    const en = JSON.parse((await api(crew('/field/{id}/progress', 'POST', { state: 'enroute' }, { id }))).body)
+    expect(en.fstate).toBe('enroute')
+    const done = JSON.parse((await api(crew('/field/{id}/progress', 'POST', { state: 'done' }, { id }))).body)
+    expect(done).toMatchObject({ status: 'resolved', by: 'team' })
+    const au = JSON.parse((await api(ev('/audit', 'GET'))).body).items.map((x: any) => x.action)
+    expect(au).toEqual(expect.arrayContaining(['field:enroute', 'field:done', 'assigned']))
+  })
+
+  it('a team that finds nobody hands the incident back to the queue, flagged for review', async () => {
+    const id = await seed()
+    await api(ev('/incidents/{id}/assign', 'POST', { team: 'NDRF Team A' }, { id }))
+    await api(crew('/field/{id}/progress', 'POST', { state: 'nofind' }, { id }))
+    const i = JSON.parse((await api(ev('/incidents', 'GET'))).body).items[0]
+    expect(i).toMatchObject({ status: 'open', review: true })
+    expect(i.team).toBeUndefined()
+  })
+
+  it('staff roles cannot use field routes, and field teams cannot use staff routes', async () => {
+    const id = await seed()
+    expect((await api(ev('/field/mine', 'GET', undefined, undefined, 'district_officer'))).statusCode).toBe(403)
+    expect((await api(crew('/incidents', 'GET'))).statusCode).toBe(403)
+    expect((await api(crew('/incidents/{id}/resolve', 'POST', {}, { id }))).statusCode).toBe(403)
+    expect((await api(crew('/audit', 'GET'))).statusCode).toBe(403)
+  })
+
+  it('overdue sweep notifies once per level and restarts after a change', async () => {
+    const id = await seed()
+    const sweep = (await import('../backend/sla')).handler
+    const raw = db.get('I#' + id + '|M')!
+    const old = (raw.inc as any).opn ?? (raw.inc as any).first
+    const realNow = Date.now
+    try {
+      Date.now = () => old + 20 * 60_000 // 20 min: warning only for urgent, nothing for the rest
+      await sweep()
+      expect(pub.filter((m) => m.startsWith('Overdue'))).toHaveLength(0)
+      Date.now = () => old + 61 * 60_000
+      await sweep()
+      await sweep() // second sweep must not repeat
+      expect(pub.filter((m) => m.startsWith('Overdue') && m.includes('no team assigned'))).toHaveLength(1)
+      await api(ev('/incidents/{id}/assign', 'POST', { team: 'NDRF Team A' }, { id })) // restarts the clock
+      Date.now = () => old + 61 * 60_000 + 130 * 60_000
+      await sweep()
+      expect(pub.filter((m) => m.includes('no update'))).toHaveLength(1)
+    } finally {
+      Date.now = realNow
+    }
+  })
+
+  it('records dispatcher feedback and reports response times and agreement', async () => {
+    const id = await seed()
+    expect((await api(ev('/incidents/{id}/feedback', 'POST', { ok: 'yes' }, { id }))).statusCode).toBe(400)
+    expect((await api(ev('/incidents/{id}/feedback', 'POST', { ok: false, wrong: ['people', 'bogus'] }, { id }, 'viewer'))).statusCode).toBe(403)
+    expect((await api(ev('/incidents/{id}/feedback', 'POST', { ok: false, wrong: ['people', 'bogus'] }, { id }, 'control_room'))).statusCode).toBe(201)
+    await api(ev('/incidents/{id}/assign', 'POST', { team: 'NDRF Team A' }, { id }))
+    await api(ev('/incidents/{id}/resolve', 'POST', {}, { id }))
+    const m = JSON.parse((await api(ev('/metrics', 'GET', undefined, undefined, 'viewer'))).body)
+    expect(m).toMatchObject({ incidents: 1, resolved: 1, controlClosed: 1, fb: { n: 1, ok: 0, rate: 0, wrong: { people: 1, place: 0 } } })
+    expect(m.toAssign.n).toBe(1)
+    // the labelled export is for district officers only and keeps text already redacted
+    expect((await api(ev('/feedback', 'GET', undefined, undefined, 'control_room'))).statusCode).toBe(403)
+    const ex = JSON.parse((await api(ev('/feedback', 'GET'))).body).items
+    expect(ex[0]).toMatchObject({ ok: false, wrong: ['people'] })
+    expect(ex[0].texts.join(' ')).not.toMatch(/\d{10}/)
   })
 })

@@ -1,4 +1,4 @@
-import type { Alert, AuditRow, Gauge, Inc, Role, Stats } from '../../shared/types'
+import type { Alert, AuditRow, Fb, Gauge, Inc, Metrics, Role, Stats, Team, Wrong } from '../../shared/types'
 import { clear, load, token, type Cfg, type Sess } from './auth'
 import { demoApi } from './demo'
 
@@ -20,6 +20,10 @@ export interface Api {
   resolve(id: string): Promise<void>
   dismiss(id: string): Promise<void>
   audit(): Promise<AuditRow[]>
+  teams(): Promise<Team[]>
+  feedback(id: string, ok: boolean, wrong: Wrong[]): Promise<void>
+  metrics(): Promise<Metrics>
+  fbExport(): Promise<Fb[]>
   surge?: () => void // demo only
 }
 
@@ -90,6 +94,12 @@ function live(cfg: Cfg, ss: Sess): Api {
       await call('POST', `/incidents/${encodeURIComponent(id)}/dismiss`, {})
     },
     audit: async () => (await call<{ items: AuditRow[] }>('GET', '/audit')).items,
+    teams: async () => (await call<{ items: Team[] }>('GET', '/teams')).items,
+    feedback: async (id, ok, wrong) => {
+      await call('POST', `/incidents/${encodeURIComponent(id)}/feedback`, { ok, wrong })
+    },
+    metrics: () => call<Metrics>('GET', '/metrics'),
+    fbExport: async () => (await call<{ items: Fb[] }>('GET', '/feedback')).items,
   }
 }
 
@@ -125,5 +135,23 @@ export function citizen(base: string): { report(text: string, pin?: Pin): Promis
       })
       if (!r.ok && r.status !== 200) throw new Error(String(r.status))
     },
+  }
+}
+
+/** Authenticated JSON caller for pages that are not the dashboard (the field-team page). */
+export function authed(cfg: Cfg, ss: Sess) {
+  const root = cfg.api.replace(/\/$/, '')
+  return async <T>(m: string, p: string, b?: unknown): Promise<{ status: number; data: T | null }> => {
+    const tok = await token(cfg, ss)
+    if (!tok) {
+      clear()
+      throw new Expired('session ended')
+    }
+    const r = await fetch(root + p, { method: m, headers: { 'content-type': 'application/json', authorization: tok }, body: b === undefined ? undefined : JSON.stringify(b) })
+    if (r.status === 401) {
+      clear()
+      throw new Expired('session ended')
+    }
+    return { status: r.status, data: r.ok ? ((await r.json()) as T) : null }
   }
 }

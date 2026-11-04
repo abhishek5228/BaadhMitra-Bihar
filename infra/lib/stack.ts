@@ -93,7 +93,7 @@ export class BaadhMitraStack extends cdk.Stack {
       accountRecovery: cog.AccountRecovery.EMAIL_ONLY,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     })
-    for (const g of ['district_officer', 'control_room', 'viewer']) new cog.CfnUserPoolGroup(this, 'Grp' + g, { userPoolId: pool.userPoolId, groupName: g })
+    for (const g of ['district_officer', 'control_room', 'viewer', 'field_team']) new cog.CfnUserPoolGroup(this, 'Grp' + g, { userPoolId: pool.userPoolId, groupName: g })
     const client = pool.addClient('Web', {
       authFlows: { userPassword: true },
       generateSecret: false,
@@ -133,9 +133,10 @@ export class BaadhMitraStack extends cdk.Stack {
     const fVd = fn('VoiceDone', 'voice.ts', 'onDone')
     const fGa = fn('Gauge', 'gauge.ts', 'handler', { secs: 60 })
     const fWa = fn('Whatsapp', 'wa.ts', 'handler', { secs: 25 })
+    const fSl = fn('Sla', 'sla.ts', 'handler', { secs: 30 })
 
     // least privilege, function by function
-    for (const f of [fIn, fEx, fApi, fVd, fGa, fWa]) tbl.grantReadWriteData(f)
+    for (const f of [fIn, fEx, fApi, fVd, fGa, fWa, fSl]) tbl.grantReadWriteData(f)
     que.grantSendMessages(fIn)
     que.grantSendMessages(fVd)
     bkt.grantPut(fIn)
@@ -148,6 +149,7 @@ export class BaadhMitraStack extends cdk.Stack {
     bkt.grantPut(fGa)
     top.grantPublish(fEx)
     top.grantPublish(fGa)
+    top.grantPublish(fSl)
     fApi.addToRolePolicy(new iam.PolicyStatement({ actions: ['sns:Subscribe'], resources: [top.topicArn] }))
     fApi.addToRolePolicy(
       new iam.PolicyStatement({
@@ -179,6 +181,9 @@ export class BaadhMitraStack extends cdk.Stack {
       },
       targets: [new tg.LambdaFunction(fVd, { retryAttempts: 2 })],
     })
+
+    // overdue sweep: unassigned or silent incidents are escalated once per level
+    new ev.Rule(this, 'Sweep', { schedule: ev.Schedule.rate(cdk.Duration.minutes(5)), targets: [new tg.LambdaFunction(fSl)] })
 
     // early warning: poll gauges on a schedule
     new ev.Rule(this, 'Poll', { schedule: ev.Schedule.rate(cdk.Duration.minutes(poll)), targets: [new tg.LambdaFunction(fGa)] })
@@ -245,9 +250,16 @@ export class BaadhMitraStack extends cdk.Stack {
     one.addResource('assign').addMethod('POST', lamApi, keyed)
     one.addResource('resolve').addMethod('POST', lamApi, keyed)
     one.addResource('dismiss').addMethod('POST', lamApi, keyed)
+    one.addResource('feedback').addMethod('POST', lamApi, keyed)
     for (const p of ['gauges', 'alerts', 'stats', 'unplaced']) rest.root.addResource(p).addMethod('GET', lamApi, keyed)
     rest.root.addResource('admin').addResource('replay').addMethod('POST', lamApi, keyed)
     rest.root.addResource('audit').addMethod('GET', lamApi, keyed)
+    for (const p of ['teams', 'metrics', 'feedback']) rest.root.addResource(p).addMethod('GET', lamApi, keyed)
+    // field teams: a rescue crew's own phone (role field_team, checked in the Lambda)
+    const fld = rest.root.addResource('field')
+    fld.addResource('ping').addMethod('POST', lamApi, keyed)
+    fld.addResource('mine').addMethod('GET', lamApi, keyed)
+    fld.addResource('{id}').addResource('progress').addMethod('POST', lamApi, keyed)
 
     // Optional edge protection (about USD 10 a month): AWS managed rules plus a per-IP rate cap.
     if (useWaf) {
@@ -274,12 +286,13 @@ export class BaadhMitraStack extends cdk.Stack {
     dash.addWidgets(
       new cw.GraphWidget({ title: 'Extraction confidence (avg)', left: [mt('Confidence', 'Average')], width: 8 }),
       new cw.GraphWidget({ title: 'Queue depth and age', left: [que.metricApproximateNumberOfMessagesVisible(), dlq.metricApproximateNumberOfMessagesVisible()], right: [que.metricApproximateAgeOfOldestMessage()], width: 8 }),
-      new cw.GraphWidget({ title: 'Alerts raised / gauge polls', left: [mt('AlertsRaised'), mt('GaugePolls')], width: 8 }),
+      new cw.GraphWidget({ title: 'Alerts raised / gauge polls', left: [mt('AlertsRaised'), mt('GaugePolls')], width: 4 }),
+      new cw.GraphWidget({ title: 'Overdue incidents (warn / breach)', left: [mt('SlaWarn', 'Maximum'), mt('SlaBreach', 'Maximum')], width: 4 }),
     )
     dash.addWidgets(
       new cw.GraphWidget({ title: 'API 4xx / 5xx', left: [rest.metricClientError(), rest.metricServerError()], width: 12 }),
       new cw.GraphWidget({ title: 'API latency p95', left: [rest.metricLatency({ statistic: 'p95' })], width: 12 }),
-      new cw.GraphWidget({ title: 'Lambda errors', left: [fIn, fEx, fApi, fVd, fGa, fWa].map((f) => f.metricErrors()), width: 24 }),
+      new cw.GraphWidget({ title: 'Lambda errors', left: [fIn, fEx, fApi, fVd, fGa, fWa, fSl].map((f) => f.metricErrors()), width: 24 }),
     )
 
     const act = new cwa.SnsAction(top)

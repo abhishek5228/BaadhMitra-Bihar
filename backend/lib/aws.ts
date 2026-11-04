@@ -73,6 +73,28 @@ export async function listInc(lim = 150): Promise<Inc[]> {
   return (r.Items ?? []).map((x) => x.inc as Inc)
 }
 
+/** Every incident including resolved and dismissed ones (for reports and the SLA sweep), paged, capped at `max`. */
+export async function allInc(max = 1000): Promise<Inc[]> {
+  const out: Inc[] = []
+  let key: Record<string, unknown> | undefined
+  do {
+    const r = await ddb.send(
+      new QueryCommand({
+        TableName: TBL(),
+        IndexName: 'gsi1',
+        KeyConditionExpression: 'g1p = :p',
+        ExpressionAttributeValues: { ':p': 'INC' },
+        ScanIndexForward: false,
+        ExclusiveStartKey: key,
+        Limit: 200,
+      }),
+    )
+    for (const x of r.Items ?? []) out.push(x.inc as Inc)
+    key = r.LastEvaluatedKey as Record<string, unknown> | undefined
+  } while (key && out.length < max)
+  return out.slice(0, max)
+}
+
 export async function listGauges(): Promise<Gauge[]> {
   const r = await ddb.send(
     new QueryCommand({ TableName: TBL(), IndexName: 'gsi1', KeyConditionExpression: 'g1p = :p', ExpressionAttributeValues: { ':p': 'GAUGE' }, Limit: 100 }),

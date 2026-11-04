@@ -1,13 +1,21 @@
 // Offline demo backend. It runs the SAME shared code as the Lambdas (redaction, extraction,
 // clustering, scoring, gauge states), so what you see in the demo is how the real pipeline behaves.
-import type { Alert, AuditRow, Gauge, Inc } from '../../shared/types'
+import type { Alert, AuditRow, Fb, Gauge, Inc, Team } from '../../shared/types'
 import { STATIONS, simlvl } from '../../shared/stations'
 import { redact } from '../../shared/redact'
 import { rulex } from '../../shared/extract'
 import { merge, score } from '../../shared/score'
+import { metrics as calc } from '../../shared/sla'
 import { ghash } from '../../shared/geo'
 import { atext, grank, gstate } from '../../shared/alert'
 import type { Api, Pin, St } from './api'
+
+const DEMO_TEAMS: [string, number, number][] = [
+  ['NDRF Team A', 25.65, 85.2],
+  ['SDRF Boat 2', 26.1, 86.6],
+  ['Local fishermen boats', 25.45, 87.2],
+  ['Army flood column', 25.8, 85.9],
+]
 
 // Invented example messages (no real people). Several senders per area show clustering.
 const SEED: [string, string][] = [
@@ -69,6 +77,8 @@ export function demoApi(): Api {
   }
 
   SEED.forEach(([t, w]) => ingest(t, w))
+  // Back-date the two highest-priority incidents so the overdue badges are visible in the demo.
+  ;[...incs.values()].sort((a, b) => b.score - a.score).slice(0, 2).forEach((i, k) => incs.set(i.id, { ...i, opn: Date.now() - (k ? 22 : 41) * 60_000 }))
 
   const readGauges = (): Gauge[] => {
     const now = Date.now()
@@ -100,6 +110,7 @@ export function demoApi(): Api {
   readGauges()
 
   const trail: AuditRow[] = []
+  const fbs: Fb[] = []
   const snapshot = (): Inc[] => {
     for (const [k, v] of incs) incs.set(k, { ...v, score: score(v) })
     return [...incs.values()].filter((i) => i.status !== 'resolved' && i.status !== 'dismissed').sort((a, b) => b.score - a.score)
@@ -126,12 +137,12 @@ export function demoApi(): Api {
     },
     assign: async (id, team) => {
       const i = incs.get(id)
-      if (i) incs.set(id, { ...i, status: 'assigned', team, ver: i.ver + 1 })
+      if (i) incs.set(id, { ...i, status: 'assigned', team, asg: Date.now(), esc: 0, ver: i.ver + 1 })
       trail.unshift({ id: String(Date.now()), ts: Date.now(), actor: 'demo', action: 'assigned', target: id, team })
     },
     resolve: async (id) => {
       const i = incs.get(id)
-      if (i) incs.set(id, { ...i, status: 'resolved', ver: i.ver + 1 })
+      if (i) incs.set(id, { ...i, status: 'resolved', res: Date.now(), by: 'control', ver: i.ver + 1 })
       trail.unshift({ id: String(Date.now()), ts: Date.now(), actor: 'demo', action: 'resolved', target: id })
     },
     dismiss: async (id) => {
@@ -140,6 +151,19 @@ export function demoApi(): Api {
       trail.unshift({ id: String(Date.now()), ts: Date.now(), actor: 'demo', action: 'dismissed', target: id })
     },
     audit: async () => [...trail],
+    teams: async (): Promise<Team[]> => {
+      // Invented crews that drift a little so the map shows live team markers in the demo.
+      const t = Date.now() / 1000
+      const busy = new Set([...incs.values()].filter((i) => i.status === 'assigned').map((i) => i.team))
+      return DEMO_TEAMS.map(([id, lat, lon], k) => ({ id, lat: lat + Math.sin(t / 40 + k) * 0.03, lon: lon + Math.cos(t / 40 + k) * 0.03, ts: Date.now(), busy: busy.has(id) }))
+    },
+    feedback: async (id, ok, wrong) => {
+      const i = incs.get(id)
+      if (!i) return
+      fbs.push({ id: String(Date.now()), ts: Date.now(), actor: 'demo', inc: id, ok, wrong: ok ? [] : wrong, place: i.place, ppl: i.ppl, needs: i.needs, sev: i.sev, texts: i.snips.map((x) => x.t) })
+    },
+    metrics: async () => calc([...incs.values()], fbs, Date.now()),
+    fbExport: async () => [...fbs],
     surge: () => {
       lift = 2.2
       SURGE.forEach((t, k) => setTimeout(() => ingest(t, 's' + k), 800 + k * 1400))

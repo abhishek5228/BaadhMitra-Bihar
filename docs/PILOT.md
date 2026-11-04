@@ -31,7 +31,8 @@ The deployed system, the runbook, training for control-room staff, a weekly revi
 - Time from report received to appearing in the queue.
 - Share of reports placed automatically vs sent to `unplaced`.
 - Share of incidents a dispatcher dismissed as false or duplicate.
-- Share of high-priority incidents where the dispatcher agreed with the score. A dispatcher can mark disagreement in the weekly review; this builds the real labelled set the benchmark needs.
+- Share of incidents where the dispatcher marked the system's reading correct, and which field was wrong (place, people, needs, severity). The dashboard collects this per incident (**Report** and the district officer's export). It is dispatcher judgement, not a full labelled test set, but it is real accuracy from real use.
+- Time to assign and time to resolve (p50 / p90), overdue counts, and how many incidents were closed by the crew vs the control room: all in the **Report** screen.
 - Queue age and dead-letter queue depth during peak load.
 - Cost for the period, from the AWS bill.
 

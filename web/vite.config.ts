@@ -10,6 +10,6 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     chunkSizeWarningLimit: 900,
-    rollupOptions: { input: { main: resolve(__dirname, 'index.html'), report: resolve(__dirname, 'report.html') } },
+    rollupOptions: { input: { main: resolve(__dirname, 'index.html'), report: resolve(__dirname, 'report.html'), field: resolve(__dirname, 'field.html') } },
   },
 })

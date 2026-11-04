@@ -31,12 +31,15 @@ describe('infrastructure guarantees', () => {
     expect(open).toHaveLength(5) // POST /reports, /upload-url, /subscribe, GET+POST /whatsapp
     expect(ms.filter((m) => m.Properties.ApiKeyRequired === true)).toHaveLength(0)
   })
-  it('has a staff user pool with no self sign-up, 12+ char passwords and three role groups', () => {
+  it('has a staff user pool with no self sign-up, 12+ char passwords and four role groups', () => {
     t.hasResourceProperties('AWS::Cognito::UserPool', {
       AdminCreateUserConfig: { AllowAdminCreateUserOnly: true },
       Policies: { PasswordPolicy: Match.objectLike({ MinimumLength: 12 }) },
     })
-    t.resourceCountIs('AWS::Cognito::UserPoolGroup', 3)
+    t.resourceCountIs('AWS::Cognito::UserPoolGroup', 4)
+  })
+  it('sweeps for overdue incidents every 5 minutes', () => {
+    t.hasResourceProperties('AWS::Events::Rule', { ScheduleExpression: 'rate(5 minutes)' })
   })
   it('keeps WhatsApp credentials in Secrets Manager, not in Lambda env values', () => {
     t.resourceCountIs('AWS::SecretsManager::Secret', 1)

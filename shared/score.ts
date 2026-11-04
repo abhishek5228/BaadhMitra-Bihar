@@ -61,6 +61,7 @@ export function merge(old: Inc | null, r: Rep, text: string, who: string, now = 
   const n = fresh ? base.n + 1 : base.n
   const raw = base.raw + 1
   const conf = Math.round(((base.conf * base.raw + r.conf) / raw) * 100) / 100
+  const reopened = base.status === 'resolved' || (base.status === 'dismissed' && fresh)
   const next: Inc = {
     ...base,
     n,
@@ -75,7 +76,9 @@ export function merge(old: Inc | null, r: Rep, text: string, who: string, now = 
     last: now,
     // A new report on a resolved incident re-opens it (the water came back). A dismissed incident re-opens
     // only when a NEW person reports, so one spammer cannot keep resurrecting it.
-    status: base.status === 'resolved' || (base.status === 'dismissed' && fresh) ? 'open' : base.status,
+    status: reopened ? 'open' : base.status,
+    opn: reopened ? now : (base.opn ?? base.first),
+    ...(reopened ? { team: undefined, asg: undefined, fstate: undefined, fts: undefined, esc: 0 as const } : {}),
     snips: [...base.snips, { ts: now, t: text.slice(0, 240), conf: r.conf, src: r.src }].slice(-6),
     who: who2,
     ver: base.ver + 1,

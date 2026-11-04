@@ -45,7 +45,17 @@ AWS emails a temporary password. At first sign-in the dashboard asks for a new p
 | --- | --- |
 | `viewer` | see the queue, map, gauges, alerts |
 | `control_room` | everything a viewer can, plus assign, resolve, dismiss |
-| `district_officer` | everything above, plus replay failed messages and read the activity log |
+| `district_officer` | everything above, plus replay failed messages, read the activity log, export dispatcher feedback |
+| `field_team` | a rescue crew's own phone page only (`/field.html`): its assigned incidents, progress taps, optional location |
+
+**Rescue crew accounts.** The crew's display name is what you pick in the dispatch dropdown, so set it with `Name=name` when creating the account (one account per crew, shared by that crew's phone):
+
+```
+aws cognito-idp admin-create-user --user-pool-id POOL --username crew1@example.gov.in --user-attributes Name=email,Value=crew1@example.gov.in Name=email_verified,Value=true Name=name,Value="NDRF Team A"
+aws cognito-idp admin-add-user-to-group --user-pool-id POOL --username crew1@example.gov.in --group-name field_team
+```
+
+The crew signs in at `<SiteUrl>/field.html`. A crew shows on the dispatcher's team list and 3D map only after it has tapped "show my location" at least once in the last 12 hours.
 
 Remove access with `aws cognito-idp admin-disable-user --user-pool-id POOL --username <email>`.
 

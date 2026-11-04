@@ -140,3 +140,15 @@ blockquote small { color: var(--mu); font-size: 11px; }
 .tbl th, .tbl td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); word-break: break-all; }
 .modal .card:has(.tbl) { width: min(720px, 100%); }
 
+
+.lbl.team { background: rgba(30, 80, 170, 0.85); color: #fff; border: 1px solid #4da3ff; padding: 1px 6px; border-radius: 6px; font-size: 11px; }
+
+.chip.late { background: #7a1f24; color: #fff; border: 1px solid var(--bd); }
+.flag.late { background: rgba(229, 72, 77, 0.22); border: 1px solid var(--bd); }
+.flag.blue { background: rgba(77, 163, 255, 0.18); border: 1px solid #4da3ff; }
+.fbk { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.fbk .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fbk .chip { cursor: pointer; }
+.fbk .chip.on { border-color: var(--ok); }
+.hide { display: none !important; }
+.mu { color: var(--mu); }

@@ -6,10 +6,11 @@ import type { Role } from '../../shared/types'
 export interface Who {
   sub: string
   name: string // email or username, for the audit trail
+  team: string // field teams: the display name set on their account (Cognito `name`), else their email
   roles: Role[]
 }
 
-const ALL: Role[] = ['district_officer', 'control_room', 'viewer']
+const ALL: Role[] = ['district_officer', 'control_room', 'viewer', 'field_team']
 
 /** Cognito puts groups in the verified ID token claims as "[a b]" or "a,b" depending on the gateway. */
 export function parseGroups(v: unknown): Role[] {
@@ -21,14 +22,16 @@ export function parseGroups(v: unknown): Role[] {
 export function whoami(e: Pick<APIGatewayProxyEvent, 'requestContext'>): Who | null {
   const c = (e.requestContext?.authorizer?.claims ?? null) as Record<string, unknown> | null
   if (!c || typeof c.sub !== 'string') return null
-  return { sub: c.sub, name: String(c.email ?? c['cognito:username'] ?? c.sub).slice(0, 80), roles: parseGroups(c['cognito:groups']) }
+  const name = String(c.email ?? c['cognito:username'] ?? c.sub).slice(0, 80)
+  return { sub: c.sub, name, team: String(c.name ?? name).trim().slice(0, 40), roles: parseGroups(c['cognito:groups']) }
 }
 
-export type Act = 'read' | 'dispatch' | 'admin'
+export type Act = 'read' | 'dispatch' | 'admin' | 'field'
 const NEED: Record<Act, Role[]> = {
   read: ['district_officer', 'control_room', 'viewer'],
   dispatch: ['district_officer', 'control_room'], // assign, resolve, dismiss
-  admin: ['district_officer'], // replay, audit log
+  admin: ['district_officer'], // replay, audit log, labelled-feedback export
+  field: ['field_team'], // a rescue team's own phone: ping, my incidents, progress. Nothing else.
 }
 export const can = (w: Who | null, a: Act): boolean => !!w && w.roles.some((r) => NEED[a].includes(r))
 

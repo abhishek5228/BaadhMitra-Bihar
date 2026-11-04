@@ -48,6 +48,13 @@ export interface Inc {
   snips: Snip[]
   who: string[] // hashed reporter ids (capped)
   ver: number // optimistic lock
+  opn?: number // when it last became (re)open: the SLA clock starts here
+  asg?: number // when a team was assigned
+  fstate?: 'enroute' | 'arrived' // what the field team last reported
+  fts?: number // time of the last field update
+  res?: number // when it was resolved
+  by?: 'team' | 'control' // who closed it: the field team confirmed, or the control room
+  esc?: 0 | 1 | 2 // highest overdue level already notified (so we notify once per level)
 }
 
 export type GState = 'normal' | 'warn' | 'danger'
@@ -96,4 +103,49 @@ export interface AuditRow {
   team?: string
 }
 
-export type Role = 'district_officer' | 'control_room' | 'viewer'
+export type Role = 'district_officer' | 'control_room' | 'viewer' | 'field_team'
+
+/** A rescue team's last reported position (shared by the team's own phone, only while they choose to). */
+export interface Team {
+  id: string
+  lat: number
+  lon: number
+  ts: number
+  busy?: boolean // has an assigned incident
+}
+
+/** A dispatcher's verdict on what the system extracted for one incident. Text is already redacted. */
+export type Wrong = 'place' | 'people' | 'needs' | 'severity'
+export const WRONGS: Wrong[] = ['place', 'people', 'needs', 'severity']
+export interface Fb {
+  id: string
+  ts: number
+  actor: string
+  inc: string
+  ok: boolean
+  wrong: Wrong[]
+  place: string
+  ppl: number
+  needs: Need[]
+  sev: number
+  texts: string[]
+}
+
+export interface Pct {
+  n: number
+  p50: number | null // minutes
+  p90: number | null
+}
+export interface Metrics {
+  incidents: number
+  open: number
+  assigned: number
+  resolved: number
+  dismissed: number
+  overdue: number // open or assigned incidents currently past an SLA threshold
+  toAssign: Pct // first report (or re-open) to team assigned
+  toResolve: Pct // assigned to resolved
+  teamClosed: number // resolved by the field team's own confirmation
+  controlClosed: number
+  fb: { n: number; ok: number; rate: number | null; wrong: Record<Wrong, number> }
+}

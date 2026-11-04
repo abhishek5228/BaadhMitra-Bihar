@@ -16,7 +16,7 @@ export interface Sess {
 }
 
 const K = 'bmsess'
-const ROLES: Role[] = ['district_officer', 'control_room', 'viewer']
+const ROLES: Role[] = ['district_officer', 'control_room', 'viewer', 'field_team']
 
 type Res = {
   AuthenticationResult?: { IdToken: string; RefreshToken?: string; ExpiresIn: number }
