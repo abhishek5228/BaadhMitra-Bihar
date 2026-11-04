@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import * as path from 'node:path'
 import * as cdk from 'aws-cdk-lib'
@@ -34,6 +34,10 @@ export class BaadhMitraStack extends cdk.Stack {
     const model: string = this.node.tryGetContext('modelId') ?? 'anthropic.claude-3-haiku-20240307-v1:0'
     const poll: number = Number(this.node.tryGetContext('pollMins') ?? 15)
     const feed: string = this.node.tryGetContext('gaugeFeedUrl') ?? ''
+    // Field mapping for a foreign feed: a file path (works in any shell, incl. Windows CMD) or the JSON text itself. See docs/DATA-REQUEST.md
+    const mapFile: string = this.node.tryGetContext('gaugeFeedMapFile') ?? ''
+    const mapText: string = mapFile ? readFileSync(path.resolve(mapFile), 'utf-8') : (this.node.tryGetContext('gaugeFeedMap') ?? '')
+    const feedMap: string = mapText ? JSON.stringify(JSON.parse(mapText)) : '' // fails the deploy early on invalid JSON
     const rps = Number(this.node.tryGetContext('reportRps') ?? 10) // citizen intake throughput; raise for a real flood
     const useWaf = String(this.node.tryGetContext('waf') ?? 'false') === 'true'
 
@@ -111,7 +115,7 @@ export class BaadhMitraStack extends cdk.Stack {
     })
 
     // ---------------------------------------------------------------- functions
-    const env = { TBL: tbl.tableName, QURL: que.queueUrl, Q_ARN: que.queueArn, DLQ_ARN: dlq.queueArn, BKT: bkt.bucketName, TOPIC: top.topicArn, MODEL: model, FEED: feed, SALT: cdk.Fn.select(2, cdk.Fn.split('/', this.stackId)), WA_SECRET: waSecret.secretArn }
+    const env = { TBL: tbl.tableName, QURL: que.queueUrl, Q_ARN: que.queueArn, DLQ_ARN: dlq.queueArn, BKT: bkt.bucketName, TOPIC: top.topicArn, MODEL: model, FEED: feed, FEED_MAP: feedMap, SALT: cdk.Fn.select(2, cdk.Fn.split('/', this.stackId)), WA_SECRET: waSecret.secretArn }
     const fn = (name: string, entry: string, handler: string, o: { mem?: number; secs?: number } = {}) =>
       new NodejsFunction(this, name, {
         entry: path.join(ROOT, 'backend', entry),

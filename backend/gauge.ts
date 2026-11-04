@@ -3,7 +3,7 @@ import { PublishCommand } from '@aws-sdk/client-sns'
 import { PollyClient, SynthesizeSpeechCommand } from '@aws-sdk/client-polly'
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { TBL, ddb, emf, env, listGauges, pad, rid, s3, sns } from './lib/aws'
-import { isStale, normalize, type Rd } from './lib/feed'
+import { adapt, isStale, normalize, parseMap, type Rd } from './lib/feed'
 import { STATIONS, simlvl } from '../shared/stations'
 import { atext, grank, gstate } from '../shared/alert'
 import type { Alert, Gauge } from '../shared/types'
@@ -22,7 +22,9 @@ async function readings(now: number): Promise<{ rows: Rd[]; down: boolean }> {
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(8000) })
     if (r.ok) {
-      const { rows, dropped } = normalize(await r.json())
+      const raw: unknown = await r.json()
+      const map = parseMap(env('FEED_MAP'))
+      const { rows, dropped } = normalize(map ? adapt(raw, map) : raw)
       if (dropped) emf('FeedDropped', dropped)
       if (rows.length) return { rows, down: false }
     }

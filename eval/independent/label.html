@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BaadhMitra labeling</title>
+<style>
+body{font:16px system-ui,sans-serif;max-width:720px;margin:0 auto;padding:16px;background:#0b1220;color:#eef2f8}
+textarea,input,select{font:inherit;padding:8px;border-radius:8px;border:1px solid #27344d;background:#121c31;color:#eef2f8;width:100%;box-sizing:border-box}
+button{font:inherit;padding:10px 16px;border-radius:8px;border:0;background:#4da3ff;color:#06101f;font-weight:700;cursor:pointer;margin:4px 4px 4px 0}
+button.g{background:#27344d;color:#eef2f8}
+.msg{font-size:20px;line-height:1.5;padding:16px;background:#121c31;border-radius:12px;margin:12px 0;white-space:pre-wrap}
+label{display:block;margin:10px 0 4px;color:#9aa8bf;font-size:14px}.row{display:flex;gap:12px}.row>div{flex:1}
+.chk label{display:inline-flex;gap:6px;align-items:center;margin-right:14px;color:#eef2f8;font-size:16px}.chk input{width:auto}
+small{color:#9aa8bf}
+</style></head><body>
+<h1>Label flood messages</h1>
+<p><small>Read each message and fill what the <b>message itself says</b>. Do not guess what is not written. Rules: LABELING.md. Your work saves in this browser; press Export when done.</small></p>
+<div id="setup">
+  <label>Your name or code (so two people's labels can be compared)</label><input id="who">
+  <label>Messages: choose the CSV (column <code>t</code>, optional <code>id</code>) or paste one message per line</label>
+  <input type="file" id="file" accept=".csv,.txt"><textarea id="paste" rows="5" placeholder="one message per line"></textarea>
+  <button id="go">Start</button>
+</div>
+<div id="work" hidden>
+  <p><b id="pos"></b> <small id="done"></small></p>
+  <div class="msg" id="msg"></div>
+  <div class="row"><div><label>Place named in the message (English or Hindi spelling; leave empty if none)</label><input id="place"></div>
+  <div><label>People at risk (number; empty if not stated)</label><input id="ppl" inputmode="numeric"></div></div>
+  <div class="row"><div><label>Water depth in cm (ankle 15, knee 50, waist 100, chest 130, roof 300; empty if not stated)</label><input id="depth" inputmode="numeric"></div>
+  <div><label>Severity 1-5 (1 puddle, 3 inside house, 5 life at risk now)</label><select id="sev"><option value="">choose</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div></div>
+  <label>What they ask for</label>
+  <div class="chk" id="needs"></div>
+  <div class="chk"><label><input type="checkbox" id="vul"> Children, elderly, pregnant or disabled person mentioned</label></div>
+  <button id="prev" class="g">Back</button><button id="next">Save and next</button><button id="exp" class="g">Export CSV</button>
+</div>
+<script>
+const NEEDS=['boat','food','water','medical','shelter'];
+const $=id=>document.getElementById(id); let M=[],A={},i=0,K='bm-label';
+$('needs').innerHTML=NEEDS.map(n=>`<label><input type="checkbox" value="${n}"> ${n}</label>`).join('');
+function csv(t){const r=[];let row=[],c='',q=false;for(let k=0;k<t.length;k++){const ch=t[k];if(q){if(ch=='"'){if(t[k+1]=='"'){c+='"';k++}else q=false}else c+=ch}else if(ch=='"')q=true;else if(ch==','){row.push(c);c=''}else if(ch=='\n'||ch=='\r'){if(ch=='\r'&&t[k+1]=='\n')k++;row.push(c);c='';if(row.some(x=>x!==''))r.push(row);row=[]}else c+=ch}row.push(c);if(row.some(x=>x!==''))r.push(row);return r}
+function q(v){v=String(v??'');return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function save(){const id=M[i].id;A[id]={place:$('place').value.trim(),ppl:$('ppl').value.trim(),depth:$('depth').value.trim(),sev:$('sev').value,vul:$('vul').checked,needs:[...document.querySelectorAll('#needs input:checked')].map(x=>x.value)};try{localStorage.setItem(K,JSON.stringify({M,A,i,who:$('who').value}))}catch(e){}}
+function show(){const m=M[i],a=A[m.id]||{};$('pos').textContent=`${i+1} / ${M.length}`;$('done').textContent=`labelled: ${Object.keys(A).length}`;$('msg').textContent=m.t;$('place').value=a.place||'';$('ppl').value=a.ppl||'';$('depth').value=a.depth||'';$('sev').value=a.sev||'';$('vul').checked=!!a.vul;document.querySelectorAll('#needs input').forEach(x=>x.checked=(a.needs||[]).includes(x.value))}
+function start(){$('setup').hidden=true;$('work').hidden=false;show()}
+$('go').onclick=async()=>{let t='';if($('file').files[0])t=await $('file').files[0].text();else t=$('paste').value;if(!t.trim())return alert('Add messages first');
+ if($('file').files[0]&&/\.csv$/i.test($('file').files[0].name)){const r=csv(t),h=r[0].map(x=>x.trim().toLowerCase()),ti=h.indexOf('t'),ii=h.indexOf('id');if(ti<0)return alert('CSV needs a column named t');M=r.slice(1).map((x,n)=>({id:ii>=0?x[ii]:String(n+1),t:x[ti]}))}
+ else M=t.split(/\r?\n/).filter(x=>x.trim()).map((x,n)=>({id:String(n+1),t:x}));
+ A={};i=0;start()};
+$('next').onclick=()=>{if(!$('sev').value)return alert('Choose a severity');save();if(i<M.length-1){i++;show()}else $('done').textContent='All done. Press Export CSV.'};
+$('prev').onclick=()=>{if(i>0){save();i--;show()}};
+$('exp').onclick=()=>{save();const w=$('who').value.trim()||'anon';const L=['id,t,place,depth,ppl,needs,vul,sev,labeler'];for(const m of M){const a=A[m.id];if(!a)continue;L.push([m.id,m.t,a.place,a.depth,a.ppl,a.needs.join('|'),a.vul?'yes':'no',a.sev,w].map(q).join(','))}
+ const b=new Blob(['﻿'+L.join('\n')],{type:'text/csv'}),u=URL.createObjectURL(b),e=document.createElement('a');e.href=u;e.download=`labels-${w}.csv`;e.click()};
+try{const s=JSON.parse(localStorage.getItem(K)||'null');if(s&&s.M&&s.M.length){M=s.M;A=s.A;i=s.i;$('who').value=s.who||'';start()}}catch(e){}
+</script></body></html>

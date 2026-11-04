@@ -84,10 +84,10 @@ fig.tight_layout(); save(fig, "g-gauges.png", "Simulator output (shared/stations
 
 # 5 ---- tests
 by = collections.Counter(); area = collections.Counter()
-names = {"shared.test.ts": "core logic", "gov.test.ts": "roles, SLA, feeds, WhatsApp, offline", "pipeline.test.ts": "Lambda pipeline on a fake AWS", "stack.test.ts": "infrastructure guarantees"}
+names = {"shared.test.ts": "core logic", "gov.test.ts": "roles, SLA, feeds, WhatsApp, offline", "pipeline.test.ts": "Lambda pipeline on a fake AWS", "stack.test.ts": "infrastructure guarantees", "kit.test.ts": "accuracy kit and feed adapter"}
 for f in t["files"]: by[names.get(f["file"], f["file"])] += len(f["tests"])
 fig, ax = plt.subplots(figsize=(10, 4))
-items = sorted(by.items(), key=lambda kv: kv[1]); cols = [C["violet"], C["amber"], C["blue"], C["teal"]]
+items = sorted(by.items(), key=lambda kv: kv[1]); cols = [C["green"], C["violet"], C["amber"], C["blue"], C["teal"]][:len(items)]
 bars = ax.barh([k for k, _ in items], [v for _, v in items], color=cols, height=.58)
 for b, (_, v) in zip(bars, items): ax.text(v + .3, b.get_y() + b.get_height() / 2, str(v), va="center", fontsize=11)
 ax.set_title(f"{t['passed']} of {t['total']} automated tests pass"); ax.set_xlabel("tests"); style(ax, "x"); ax.set_xlim(0, max(by.values()) + 4)

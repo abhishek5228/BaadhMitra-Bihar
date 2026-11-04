@@ -8,7 +8,7 @@
 Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicated rescue queue on a live 3D map. Rescue crews get their own phone page, and nothing waits unnoticed.
 
 [![CI](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml/badge.svg)](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml)
-![tests](https://img.shields.io/badge/tests-66%20passing-2fbf71)
+![tests](https://img.shields.io/badge/tests-77%20passing-2fbf71)
 ![AWS](https://img.shields.io/badge/AWS-Lambda%20%C2%B7%20SQS%20%C2%B7%20DynamoDB%20%C2%B7%20Bedrock%20%C2%B7%20Cognito-ff9900)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![three.js](https://img.shields.io/badge/3D-three.js-black)
@@ -236,13 +236,15 @@ flowchart LR
 
 ## Tests and evaluation
 
-<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 66 passing tests by area" width="70%"/></p>
+<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 77 passing tests by area" width="70%"/></p>
 
 ```bash
-npm run typecheck && npm test      # 66 tests: core logic, the Lambda pipeline against a fake AWS, roles and audit, WhatsApp signatures, feeds, offline queue, CDK guarantees
+npm run typecheck && npm test      # 77 tests: core logic, the Lambda pipeline against a fake AWS, roles and audit, WhatsApp signatures, feeds, offline queue, CDK guarantees, accuracy kit
 npm run eval                       # extractor benchmark (add LLM=1 MODEL=<id> to score Bedrock)
 npx cdk synth                      # validates the CloudFormation template
 npm run loadtest -- <api> 200 20 --yes   # load test the public endpoint (use a staging stack)
+npm run eval:ind -- labels.csv           # score on messages labelled by other people (see below)
+npm run feed:check -- sample.json map.json # check a real gauge feed before wiring it in
 npm run docs:data && npm run docs:graphs # regenerate the numbers and graphs in this README
 ```
 
@@ -251,11 +253,22 @@ npm run docs:data && npm run docs:graphs # regenerate the numbers and graphs in 
 | Core logic (`shared.test.ts`) | 22 | extraction, redaction, scoring, merging, geohash |
 | Roles, SLA, feeds, WhatsApp, offline (`gov.test.ts`) | 18 | dialect words, dismissal, village lookup, signatures, offline queue, overdue and metrics maths |
 | Lambda pipeline (`pipeline.test.ts`) | 15 | the whole flow on a fake AWS: field team flow, role isolation, overdue sweep, rate limit, audit |
-| Infrastructure (`stack.test.ts`) | 11 | four role groups, only five public methods, five-minute sweep, WAF opt-in, alarms |
+| Infrastructure (`stack.test.ts`) | 12 | four role groups, only five public methods, five-minute sweep, WAF opt-in, alarms, validated feed map |
+| Accuracy kit and feed adapter (`kit.test.ts`) | 10 | CSV parsing, label normalisation, confidence intervals, labeler agreement, foreign gauge feeds mapped without inventing values |
 
 What the tests do **not** cover: a live AWS account, real WhatsApp traffic, real phones' GPS, or any real flood message. The pipeline tests run on fakes.
 
 An honest note on the benchmark: `eval/labeled.json` is a starter set of 41 messages written by the project author alongside the rule extractor. It scores 100% on place, depth, people, vulnerable and severity and 97.4% on needs (precision, recall and F1), so it is a regression guard, not an accuracy claim. Writing the set already exposed a real bug (the Hindi phrase "aa gaya" was being read as the city Gaya), now fixed and tested. To quote accuracy, label fresh messages you did not use while building and report per-field scores on those.
+
+## Proving it: three things only other people can supply
+
+The weakest points of this project are the ones the author cannot fix alone. The tooling for each is built; the evidence is not yet collected, and this README will not claim it until it is.
+
+| Gap | Tooling in this repo | Status |
+| --- | --- | --- |
+| **Accuracy on messages nobody tuned for** | [`label.html`](eval/independent/label.html) (offline labeling page), [`LABELING.md`](eval/independent/LABELING.md) (protocol: writers and labelers kept apart, two labelers, 100+ messages), `npm run eval:ind` (per-field scores with 95% confidence intervals and labeler agreement) | **Not run.** Needs other people to write and label messages. |
+| **Real river data** | A config-driven feed adapter (`FEED_MAP`: field paths, units, station table), `npm run feed:check`, and a data-request email in [`DATA-REQUEST.md`](docs/DATA-REQUEST.md) | **No official feed connected.** Levels stay `sim`. |
+| **Practitioner feedback** | Demo and request emails in English and Hindi ([`outreach/`](docs/outreach)), a ten-question [feedback form](docs/outreach/FEEDBACK-FORM.md), and an honest log, [`FEEDBACK.md`](docs/FEEDBACK.md) | **None collected yet.** The log is empty on purpose. |
 
 ## Docs for a real pilot
 
@@ -266,6 +279,8 @@ An honest note on the benchmark: `eval/labeled.json` is a starter set of 41 mess
 | [`SOP.md`](docs/SOP.md) | control-room runbook: working the queue, what to do when something breaks |
 | [`SECURITY.md`](docs/SECURITY.md) · [`PRIVACY.md`](docs/PRIVACY.md) | what is protected, known gaps, data handling notes for legal review |
 | [`WHATSAPP.md`](docs/WHATSAPP.md) | connecting the Meta WhatsApp Business webhook |
+| [`DATA-REQUEST.md`](docs/DATA-REQUEST.md) | asking an agency for gauge data, then wiring the feed |
+| [`outreach/`](docs/outreach) · [`FEEDBACK.md`](docs/FEEDBACK.md) | demo request emails, feedback form, the feedback log |
 | [`PITCH.md`](docs/PITCH.md) · [`DEMO-SCRIPT.md`](docs/DEMO-SCRIPT.md) | one-page pitch and a 5-minute demo script |
 
 ## Repo layout
@@ -277,8 +292,8 @@ backend/    Lambda handlers: ingest, voice, extract, api, gauge, whatsapp, sla (
 infra/      AWS CDK stack (TypeScript)
 web/        3D dispatcher dashboard (Three.js + Vite), offline citizen report page, rescue-crew page
 docs/       pilot plan, deploy checklist, runbook, security, privacy, WhatsApp, pitch, demo script, assets
-scripts/    deploy, village importer, load test, README data and graph generators
-eval/       labeled messages + benchmark script
+scripts/    deploy, village importer, load test, feed checker, README data and graph generators
+eval/       author benchmark, plus independent/ (labeling page, protocol, scorer)
 test/       unit tests and CDK assertion tests
 ```
 
@@ -305,7 +320,7 @@ Alternatives: run the same script from AWS CloudShell, or use **Actions > deploy
 
 Manual steps, if you prefer: `npm ci && npm run web:build && npx cdk bootstrap && npx cdk deploy -c modelId=<id>`, then create a Cognito user and add it to a group (`docs/DEPLOY-INDIA.md`).
 
-Optional settings: `-c gaugeFeedUrl=https://...` (feed shaped `[{id,name,river,lat,lon,lvl,danger,ts?}]`), `-c reportRps=50`, `-c waf=true`. Without a feed, readings are simulated and flagged.
+Optional settings: `-c gaugeFeedUrl=https://...` (feed shaped `[{id,name,river,lat,lon,lvl,danger,ts?}]`, or any other shape with `-c gaugeFeedMapFile=map.json`, see `docs/DATA-REQUEST.md`), `-c reportRps=50`, `-c waf=true`. Without a feed, readings are simulated and flagged.
 
 If Bedrock access or the model id is wrong, the system keeps working on the rule extractor and the dashboard shows the fallback count rising. To remove everything: `npx cdk destroy` (the DynamoDB table is retained by design).
 

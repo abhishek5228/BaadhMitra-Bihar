@@ -68,3 +68,14 @@ describe('opt-in edge protection', () => {
     w.resourceCountIs('AWS::CloudWatch::Alarm', 5) // + FeedDown when a feed is configured
   })
 })
+
+describe('foreign gauge feed mapping', () => {
+  it('passes a minified, validated map to the gauge Lambda, and rejects invalid JSON', () => {
+    const ctx = { 'aws:cdk:bundling-stacks': [], gaugeFeedUrl: 'https://example.gov/g.json', gaugeFeedMap: '{ "id": "a",\n "lvl": "b" }' }
+    const m = Template.fromStack(new BaadhMitraStack(new cdk.App({ context: ctx }), 'M', { env: { account: '111111111111', region: 'ap-southeast-2' } }))
+    m.hasResourceProperties('AWS::Lambda::Function', { Environment: { Variables: Match.objectLike({ FEED_MAP: '{"id":"a","lvl":"b"}' }) } })
+    const bad = new cdk.App({ context: { ...ctx, gaugeFeedMap: '{nope' } })
+    expect(() => new BaadhMitraStack(bad, 'B', { env: { account: '111111111111', region: 'ap-southeast-2' } })).toThrow()
+  })
+})
+

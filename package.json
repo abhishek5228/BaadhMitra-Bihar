@@ -12,6 +12,8 @@
     "synth": "cdk synth --quiet",
     "deploy": "npm run web:build && cdk deploy --require-approval never",
     "eval": "tsx eval/run.ts",
+    "eval:ind": "tsx eval/score.ts",
+    "feed:check": "tsx scripts/feed-check.ts",
     "villages": "tsx scripts/villages.ts",
     "loadtest": "tsx scripts/loadtest.ts",
     "docs:data": "tsx scripts/docs-data.ts",

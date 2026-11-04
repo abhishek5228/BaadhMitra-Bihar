@@ -1,6 +1,7 @@
 // Official gauge feeds differ from source to source. This turns a JSON feed shaped
 // [{id,name,river,lat,lon,lvl,danger,ts?}] into clean readings and drops anything implausible.
-// A source with a different shape needs a small adapter that outputs this shape.
+// A source with a different shape is mapped onto this shape by adapt() below, driven by a small JSON
+// config (FEED_MAP), so a new official source needs a config file, not new code.
 export interface Rd {
   id: string
   name: string
@@ -47,3 +48,65 @@ export function normalize(js: unknown): { rows: Rd[]; dropped: number } {
 
 /** True when the reading is too old to trust for a warning. */
 export const isStale = (ts: number | null, now: number): boolean => ts !== null && now - ts > STALE_MS
+
+/** Where each value lives in a source feed. Paths are dotted, e.g. "data.0.level". */
+export interface FeedMap {
+  list?: string // path to the array of readings; omit if the feed itself is the array
+  id: string
+  lvl: string
+  name?: string
+  river?: string
+  lat?: string
+  lon?: string
+  danger?: string
+  ts?: string
+  scale?: number // multiply lvl and danger (e.g. 0.01 if the feed is in centimetres)
+  /** Station details the feed does not carry (usually from the agency's official station list). */
+  stations?: Record<string, { name?: string; river?: string; lat: number; lon: number; danger: number }>
+}
+
+const dig = (o: unknown, path?: string): unknown => {
+  if (!path) return o
+  let cur: unknown = o
+  for (const k of path.split('.')) {
+    if (cur === null || typeof cur !== 'object') return undefined
+    cur = (cur as Record<string, unknown>)[k]
+  }
+  return cur
+}
+
+/** Reshape a foreign feed into the shape normalize() expects. Never invents a value: missing stays missing. */
+export function adapt(js: unknown, map: FeedMap): unknown[] {
+  const src = dig(js, map.list)
+  if (!Array.isArray(src)) return []
+  const k = map.scale ?? 1
+  const num = (v: unknown): unknown => (v === null || v === undefined || v === '' ? undefined : Number(v))
+  return src.map((x) => {
+    const idv = dig(x, map.id)
+    const id = idv === undefined || idv === null ? undefined : String(idv)
+    const st = id ? map.stations?.[id] : undefined
+    const lvl = num(dig(x, map.lvl))
+    const dg = map.danger ? num(dig(x, map.danger)) : st?.danger
+    return {
+      id,
+      name: (map.name ? dig(x, map.name) : undefined) ?? st?.name ?? id,
+      river: (map.river ? dig(x, map.river) : undefined) ?? st?.river ?? '',
+      lat: map.lat ? num(dig(x, map.lat)) : st?.lat,
+      lon: map.lon ? num(dig(x, map.lon)) : st?.lon,
+      lvl: typeof lvl === 'number' ? lvl * k : lvl,
+      danger: typeof dg === 'number' ? dg * (map.danger ? k : 1) : dg,
+      ts: map.ts ? dig(x, map.ts) : undefined,
+    }
+  })
+}
+
+/** Parse the FEED_MAP environment value; a bad value means "no mapping" rather than a crash. */
+export function parseMap(raw: string | undefined): FeedMap | null {
+  if (!raw) return null
+  try {
+    const m = JSON.parse(raw) as FeedMap
+    return m && typeof m.id === 'string' && typeof m.lvl === 'string' ? m : null
+  } catch {
+    return null
+  }
+}

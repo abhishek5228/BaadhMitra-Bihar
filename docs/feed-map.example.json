@@ -1,0 +1,11 @@
+{
+  "_note": "EXAMPLE ONLY. This shape is invented to show the mapping; the real field names come from the agency's own feed. Fill the paths and the stations table from official sources.",
+  "list": "readings",
+  "id": "stationCode",
+  "lvl": "waterLevel",
+  "ts": "observedAt",
+  "scale": 1,
+  "stations": {
+    "EX001": { "name": "Example Station", "river": "Example River", "lat": 25.6, "lon": 85.1, "danger": 50.0 }
+  }
+}
