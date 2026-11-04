@@ -83,21 +83,21 @@ Click an incident, dispatch a team, type a report, or press **Simulate monsoon s
 
 ## Deploy to AWS
 
-Prerequisites: AWS credentials, Node 22, and these enabled in your chosen region (default `ap-south-1`, Mumbai): Amazon Bedrock model access, Amazon Transcribe, Amazon Polly (Kajal, neural, hi-IN).
+Prerequisites: AWS credentials for the target account (`aws configure` or `aws sso login`), AWS CLI v2, Node 22, and in your chosen region (default `ap-south-1`, Mumbai): Amazon Bedrock model access, Amazon Transcribe, and Amazon Polly (Kajal, neural, hi-IN).
 
 ```bash
-npm ci
-npm run web:build
-npx cdk bootstrap
-npx cdk deploy -c modelId=<a Bedrock model or inference-profile id you have access to>
-aws apigateway get-api-key --api-key <ApiKeyId from the outputs> --include-value
+AWS_REGION=ap-south-1 MODEL_ID=<a Bedrock model or inference-profile id you can use> ./scripts/deploy.sh
 ```
 
-Open `SiteUrl`, press **Connect to AWS**, paste the key. Subscribe an email to the alert topic with `POST /subscribe`.
+The script runs the tests, builds the 3D dashboard, bootstraps CDK, deploys the whole stack (API, Lambdas, SQS + DLQ, DynamoDB, S3, EventBridge, SNS, CloudWatch, CloudFront site) and prints the dashboard URL and the dispatcher API key. Open the URL, press **Connect to AWS**, paste the key.
+
+Alternatives: run the same script from AWS CloudShell, or use **Actions > deploy** in GitHub (set the repository variable `AWS_ROLE_ARN` to an IAM role that trusts GitHub OIDC for this repo).
+
+Manual steps, if you prefer: `npm ci && npm run web:build && npx cdk bootstrap && npx cdk deploy -c modelId=<id>`, then `aws apigateway get-api-key --api-key <ApiKeyId> --include-value`.
 
 Optional: `-c gaugeFeedUrl=https://...` points the poller at a JSON feed shaped `[{id,name,river,lat,lon,lvl,danger}]`. Without it, readings are simulated and flagged.
 
-If Bedrock access or the model id is wrong, the system keeps working on the rule extractor and the dashboard shows the fallback count rising.
+If Bedrock access or the model id is wrong, the system keeps working on the rule extractor and the dashboard shows the fallback count rising. To remove everything: `npx cdk destroy` (the DynamoDB table is retained by design).
 
 ## API
 
@@ -113,7 +113,7 @@ If Bedrock access or the model id is wrong, the system keeps working on the rule
 ## Testing and evaluation
 
 ```bash
-npm run typecheck && npm test      # 29 tests: core logic and CDK infrastructure guarantees
+npm run typecheck && npm test      # 36 tests: core logic, the Lambda pipeline against a fake AWS, CDK guarantees
 npm run eval                       # extractor benchmark (add LLM=1 MODEL=<id> to score Bedrock)
 npx cdk synth                      # validates the CloudFormation template
 ```

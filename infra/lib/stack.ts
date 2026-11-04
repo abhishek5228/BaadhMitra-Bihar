@@ -146,6 +146,7 @@ export class BaadhMitraStack extends cdk.Stack {
     // ---------------------------------------------------------------- API
     const rest = new api.RestApi(this, 'Api', {
       restApiName: 'baadhmitra',
+      cloudWatchRole: false, // do not overwrite the account-wide API Gateway logging role
       deployOptions: {
         stageName: 'prod',
         tracingEnabled: true,
@@ -160,6 +161,11 @@ export class BaadhMitraStack extends cdk.Stack {
       },
       defaultCorsPreflightOptions: { allowOrigins: api.Cors.ALL_ORIGINS, allowMethods: ['GET', 'POST', 'OPTIONS'], allowHeaders: ['Content-Type', 'X-Api-Key'] },
     })
+    // Errors raised by API Gateway itself (wrong or missing key, throttling, validation) must still carry
+    // CORS headers, otherwise the browser hides the real status behind a generic network error.
+    const cors = { 'Access-Control-Allow-Origin': "'*'" }
+    rest.addGatewayResponse('Gw4xx', { type: api.ResponseType.DEFAULT_4XX, responseHeaders: cors })
+    rest.addGatewayResponse('Gw5xx', { type: api.ResponseType.DEFAULT_5XX, responseHeaders: cors })
     const lamIn = new api.LambdaIntegration(fIn)
     const lamApi = new api.LambdaIntegration(fApi)
     const keyed = { apiKeyRequired: true }
