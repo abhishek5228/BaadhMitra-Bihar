@@ -8,7 +8,7 @@
 Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicated rescue queue on a live 3D map. Rescue crews get their own phone page, and nothing waits unnoticed.
 
 [![CI](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml/badge.svg)](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml)
-![tests](https://img.shields.io/badge/tests-88%20passing-2fbf71)
+![tests](https://img.shields.io/badge/tests-109%20passing-2fbf71)
 ![AWS](https://img.shields.io/badge/AWS-Lambda%20%C2%B7%20SQS%20%C2%B7%20DynamoDB%20%C2%B7%20Bedrock%20%C2%B7%20Cognito-ff9900)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![three.js](https://img.shields.io/badge/3D-three.js-black)
@@ -236,10 +236,10 @@ flowchart LR
 
 ## Tests and evaluation
 
-<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 88 passing tests by area" width="70%"/></p>
+<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 109 passing tests by area" width="70%"/></p>
 
 ```bash
-npm run typecheck && npm test      # 88 tests: core logic, the Lambda pipeline against a fake AWS, roles and audit, WhatsApp signatures, feeds, offline queue, CDK guarantees, accuracy kit
+npm run typecheck && npm test      # 109 tests: core logic, the Lambda pipeline against a fake AWS, roles and audit, WhatsApp signatures, feeds, offline queue, CDK guarantees, accuracy kit
 npm run eval                       # extractor benchmark (add LLM=1 MODEL=<id> to score Bedrock)
 npx cdk synth                      # validates the CloudFormation template
 npm run loadtest -- <api> 200 20 --yes   # load test the public endpoint (use a staging stack)
@@ -253,9 +253,11 @@ npm run docs:data && npm run docs:graphs # regenerate the numbers and graphs in 
 | Core logic (`shared.test.ts`) | 22 | extraction, redaction, scoring, merging, geohash |
 | Roles, SLA, feeds, WhatsApp, offline (`gov.test.ts`) | 18 | dialect words, dismissal, village lookup, signatures, offline queue, overdue and metrics maths |
 | Lambda pipeline (`pipeline.test.ts`) | 15 | the whole flow on a fake AWS: field team flow, role isolation, overdue sweep, rate limit, audit |
-| Infrastructure (`stack.test.ts`) | 13 | four role groups, only five public methods, five-minute sweep, WAF opt-in, alarms, validated feed map, CORS lock-down |
-| Dashboard helpers (`filter.test.ts`, `csv.test.ts`) | 10 | queue search and filters, CSV export with spreadsheet-formula protection |
-| Accuracy kit and feed adapter (`kit.test.ts`) | 10 | CSV parsing, label normalisation, confidence intervals, labeler agreement, foreign gauge feeds mapped without inventing values |
+| Infrastructure (`stack.test.ts`) | 14 | four role groups, only five public methods, five-minute sweep, WAF opt-in, alarms, validated feed map, feed credential, CORS lock-down |
+| Dashboard and phone helpers (`filter`, `csv`, `queue`, `pingrule`, `mfa`, `villages-import`) | 28 | queue search, CSV export with formula protection, single-flight offline outbox, battery-aware crew pings, two-step sign-in enrolment, village import |
+| Accuracy kit and feed adapter (`kit.test.ts`) | 12 | CSV parsing, label normalisation, confidence intervals, labeler agreement, foreign gauge feeds mapped without inventing values |
+
+On top of these, `npm run e2e` runs 8 Playwright browser tests against the built site in demo mode (ranked queue, search and filters, dialogs, surge, and the citizen page keeping a report offline and sending it when the network returns). They run in CI and need no AWS.
 
 What the tests do **not** cover: a live AWS account, real WhatsApp traffic, real phones' GPS, or any real flood message. The pipeline tests run on fakes.
 
@@ -343,9 +345,9 @@ If Bedrock access or the model id is wrong, the system keeps working on the rule
 
 - Transcribe has no Maithili or Bhojpuri model, so Hindi is used; confidence drops on heavy dialect and the review queue catches it. The Bhojpuri/Maithili word list is best effort and needs native-speaker review.
 - WhatsApp needs a Meta business account and approval; the webhook is built and tested but has not talked to the real Meta service.
-- River data is simulated until you configure an official feed (and get permission for it). Village-level placement needs a licensed village dataset (`npm run villages`); the shipped index is empty.
+- River data is simulated until you configure an official feed (and get permission for it). A single API-key header is supported; OAuth or signed requests are not. Village-level placement needs a licensed village dataset (`npm run villages`); the shipped index is empty.
 - Two-step sign-in can be enrolled from the dashboard but is not mandatory and is untested on a live pool; CORS is open by default for demo convenience (`-c corsOrigin=...` restricts it); no independent penetration test. See `docs/SECURITY.md` for the full list.
 - SMS delivery in India requires DLT registration with SNS; email alerts work immediately.
 - The benchmark set is author-written; real accuracy is measured in a pilot (`docs/PILOT.md`).
-- Crew location is only as good as the phone and the crew's choice to share it. The overdue thresholds (15/30 and 30/60 minutes, 60/120 for a silent crew) are starting values to agree with the control room, not standards.
+- Crew location is only as good as the phone and the crew's choice to share it. The battery-saving ping rule (about every 25 s when moving, every 3 min when still) has not been tried on real phones. The overdue thresholds (15/30 and 30/60 minutes, 60/120 for a silent crew) are starting values to agree with the control room, not standards.
 - Next: resource-aware team suggestions, IVR / missed-call intake, district-boundary heatmap, a list screen for unplaced reports.
