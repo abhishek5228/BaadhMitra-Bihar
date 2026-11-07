@@ -74,6 +74,14 @@ func Gauges(w io.Writer, gs []Gauge) {
 	}
 }
 
+// iso formats a millisecond timestamp, or an empty cell when there is none.
+func iso(ms int64) string {
+	if ms <= 0 {
+		return ""
+	}
+	return time.UnixMilli(ms).UTC().Format(time.RFC3339)
+}
+
 // safe stops a spreadsheet from running a place name as a formula (names come from citizen messages).
 func safe(s string) string {
 	if s != "" && strings.ContainsRune("=+-@\t\r", rune(s[0])) {
@@ -85,13 +93,13 @@ func safe(s string) string {
 // WriteCSV writes the incident list for a control room's own records. No reporter ids or message text.
 func WriteCSV(w io.Writer, incs []Inc) error {
 	cw := csv.NewWriter(w)
-	_ = cw.Write([]string{"id", "place", "score", "status", "team", "reporters", "people", "severity", "vulnerable", "needs"})
+	_ = cw.Write([]string{"id", "place", "score", "status", "team", "reporters", "people", "severity", "vulnerable", "needs", "first_report", "opened", "assigned", "resolved", "closed_by"})
 	for _, i := range incs {
 		v := "no"
 		if i.Vul {
 			v = "yes"
 		}
-		_ = cw.Write([]string{safe(i.ID), safe(i.Place), fmt.Sprint(i.Score), i.Status, safe(i.Team), fmt.Sprint(i.N), fmt.Sprint(i.Ppl), fmt.Sprint(i.Sev), v, strings.Join(i.Needs, "|")})
+		_ = cw.Write([]string{safe(i.ID), safe(i.Place), fmt.Sprint(i.Score), i.Status, safe(i.Team), fmt.Sprint(i.N), fmt.Sprint(i.Ppl), fmt.Sprint(i.Sev), v, strings.Join(i.Needs, "|"), iso(i.First), iso(i.Opn), iso(i.Asg), iso(i.Res), i.By})
 	}
 	cw.Flush()
 	return cw.Error()

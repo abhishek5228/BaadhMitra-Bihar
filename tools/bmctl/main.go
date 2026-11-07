@@ -3,7 +3,7 @@
 //
 //	BM_API=https://xxxx.execute-api.ap-southeast-2.amazonaws.com/prod BM_CLIENT=<client id> BM_USER=<email> BM_PASS=<password> bmctl queue
 //
-// Commands: queue [-n 15], gauges, export -o incidents.csv
+// Commands: queue [-n 15], gauges, export [-all] -o incidents.csv
 package main
 
 import (
@@ -34,7 +34,7 @@ func fail(err error) {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: bmctl queue [-n N] | gauges | export -o file.csv")
+		fmt.Fprintln(os.Stderr, "usage: bmctl queue [-n N] | gauges | export [-all] -o file.csv")
 		os.Exit(2)
 	}
 	cfg := env()
@@ -50,7 +50,7 @@ func main() {
 		fs := flag.NewFlagSet("queue", flag.ExitOnError)
 		n := fs.Int("n", 15, "how many incidents")
 		_ = fs.Parse(os.Args[2:])
-		incs, err := cfg.Incidents(tok)
+		incs, err := cfg.Incidents(tok, false)
 		if err != nil {
 			fail(err)
 		}
@@ -64,8 +64,9 @@ func main() {
 	case "export":
 		fs := flag.NewFlagSet("export", flag.ExitOnError)
 		out := fs.String("o", "baadhmitra-incidents.csv", "output file")
+		all := fs.Bool("all", false, "include closed incidents (district officers only)")
 		_ = fs.Parse(os.Args[2:])
-		incs, err := cfg.Incidents(tok)
+		incs, err := cfg.Incidents(tok, *all)
 		if err != nil {
 			fail(err)
 		}

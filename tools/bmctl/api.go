@@ -25,6 +25,7 @@ type Inc struct {
 	Opn    int64    `json:"opn"`
 	Asg    int64    `json:"asg"`
 	Res    int64    `json:"res"`
+	By     string   `json:"by"`
 }
 
 type Gauge struct {
@@ -57,11 +58,16 @@ func (c Config) get(tok, path string, into any) error {
 	return json.Unmarshal(b, into)
 }
 
-func (c Config) Incidents(tok string) ([]Inc, error) {
+// Incidents lists open ones; all=true also returns closed ones (district officers only).
+func (c Config) Incidents(tok string, all bool) ([]Inc, error) {
 	var o struct {
 		Items []Inc `json:"items"`
 	}
-	err := c.get(tok, "/incidents", &o)
+	path := "/incidents"
+	if all {
+		path += "?all=1"
+	}
+	err := c.get(tok, path, &o)
 	return o.Items, err
 }
 

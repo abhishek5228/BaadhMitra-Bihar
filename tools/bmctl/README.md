@@ -15,6 +15,7 @@ set BM_PASS=your-password
 bmctl queue -n 10
 bmctl gauges
 bmctl export -o incidents.csv
+bmctl export -all -o history.csv   (district officers: includes closed incidents)
 ```
 
 Settings come from environment variables so a password never appears in a flag or shell history. If your account uses two-step sign-in, also set `BM_CODE` to the current 6-digit code. A first sign-in that asks for a new password must be done once in the dashboard.

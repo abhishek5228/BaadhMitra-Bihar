@@ -90,15 +90,41 @@ func TestAPISendsTokenAndHandlesRoles(t *testing.T) {
 	}))
 	defer s.Close()
 	c := Config{API: s.URL + "/prod/"}
-	incs, err := c.Incidents("TOK")
+	incs, err := c.Incidents("TOK", false)
 	if err != nil || len(incs) != 1 || incs[0].Place != "Supaul" {
 		t.Fatalf("got %v %v", incs, err)
 	}
-	if _, err := c.Incidents("WRONG"); err == nil || !strings.Contains(err.Error(), "401") {
+	if _, err := c.Incidents("WRONG", false); err == nil || !strings.Contains(err.Error(), "401") {
 		t.Fatalf("want 401 error, got %v", err)
 	}
 	if _, err := c.Gauges("TOK"); err == nil || !strings.Contains(err.Error(), "role") {
 		t.Fatalf("want role error, got %v", err)
+	}
+}
+
+func TestAllFlagAsksForHistory(t *testing.T) {
+	var got string
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.URL.RequestURI()
+		_, _ = w.Write([]byte(`{"items":[]}`))
+	}))
+	defer s.Close()
+	c := Config{API: s.URL}
+	_, _ = c.Incidents("T", true)
+	if got != "/incidents?all=1" {
+		t.Fatalf("got %s", got)
+	}
+	_, _ = c.Incidents("T", false)
+	if got != "/incidents" {
+		t.Fatalf("got %s", got)
+	}
+}
+
+func TestCSVHasTimestamps(t *testing.T) {
+	var b bytes.Buffer
+	_ = WriteCSV(&b, []Inc{{ID: "x", Place: "P", First: 1_700_000_000_000, Res: 1_700_000_600_000, By: "team"}})
+	if !strings.Contains(b.String(), "2023-11-14T22:13:20Z") || !strings.Contains(b.String(), "2023-11-14T22:23:20Z") || !strings.Contains(b.String(), ",team") {
+		t.Fatalf("unexpected:\n%s", b.String())
 	}
 }
 
