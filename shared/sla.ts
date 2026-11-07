@@ -28,7 +28,7 @@ export function sla(i: Pick<Inc, 'status' | 'score' | 'first' | 'opn' | 'asg' | 
   return { lvl: 0, why: null, mins: 0 }
 }
 
-const q = (a: number[], p: number): number | null => {
+export const q = (a: number[], p: number): number | null => {
   if (!a.length) return null
   const s = [...a].sort((x, y) => x - y)
   return Math.round(s[Math.min(s.length - 1, Math.floor(p * s.length))] * 10) / 10
