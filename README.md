@@ -290,7 +290,7 @@ The weakest points of this project are the ones the author cannot fix alone. The
 
 `dotnet/BaadhMitra.Core` is a C# (.NET 8) version of the pure decision rules: priority score, overdue clock, great-circle distance, time-to-danger and crew ranking. The deployed system runs the TypeScript; the C# is not in the Lambdas. It is there for teams that live in .NET (a state data centre, a GIS or ERP integration) and want the same rules without re-deriving them.
 
-Two copies of a rule drift apart quietly, so `npm run vectors` writes 1,725 inputs and the TypeScript's answers to `conformance/vectors.json`, and `dotnet/Conformance` replays them against the C#. CI regenerates the file, fails if it changed, and runs the replay. Locally: `npm run vectors`, then `dotnet run -c Release --project dotnet/Conformance -- conformance/vectors.json`.
+Two copies of a rule drift apart quietly, so `npm run vectors` writes about 1,700 inputs and the TypeScript's answers to `conformance/vectors.json`, and `dotnet/Conformance` replays them against the C#. CI regenerates the file, fails if it changed, and runs the replay. Locally: `npm run vectors`, then `dotnet run -c Release --project dotnet/Conformance -- conformance/vectors.json`.
 
 What this proves: same answers on those inputs, including rounding edges (JavaScript rounds halves up, C# rounds to even by default, so the port handles it). What it does not: that the rules themselves are right; that is the job of the evaluation and a pilot.
 
