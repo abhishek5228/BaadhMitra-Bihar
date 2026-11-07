@@ -273,6 +273,17 @@ The weakest points of this project are the ones the author cannot fix alone. The
 | **Real river data** | A config-driven feed adapter (`FEED_MAP`: field paths, units, station table), `npm run feed:check`, and a data-request email in [`DATA-REQUEST.md`](docs/DATA-REQUEST.md) | **No official feed connected.** Levels stay `sim`. |
 | **Practitioner feedback** | Demo and request emails in English and Hindi ([`outreach/`](docs/outreach)), a ten-question [feedback form](docs/outreach/FEEDBACK-FORM.md), and an honest log, [`FEEDBACK.md`](docs/FEEDBACK.md) | **None collected yet.** The log is empty on purpose. |
 
+## More than one language, on purpose
+
+The core is TypeScript so the same scoring and extraction code runs in the Lambdas and in the browser. Two small tools sit beside it where another language is the better fit:
+
+| Tool | Language | Why it exists |
+| --- | --- | --- |
+| [`tools/bmctl`](tools/bmctl) | Go | A single static binary for a control-room PC with a poor connection or no browser: `queue`, `gauges`, `export`. Read-only. |
+| [`analysis/afteraction.py`](analysis/afteraction.py) | Python | Turns the incident CSV into an after-action report with bootstrap confidence intervals, using only the standard library. |
+
+Both read the same CSV and API the dashboard uses, have their own tests, and run in CI. Neither can change an incident.
+
 ## Docs for a real pilot
 
 | Doc | For |
@@ -295,6 +306,8 @@ backend/    Lambda handlers: ingest, voice, extract, api, gauge, whatsapp, sla (
 infra/      AWS CDK stack (TypeScript)
 web/        3D dispatcher dashboard (Three.js + Vite), offline citizen report page, rescue-crew page
 docs/       pilot plan, deploy checklist, runbook, security, privacy, WhatsApp, pitch, demo script, assets
+tools/      bmctl: read-only Go terminal client (queue, gauges, CSV export)
+analysis/   Python after-action report from the incident CSV (bootstrap intervals)
 scripts/    deploy, village importer, load test, feed checker, README data and graph generators
 eval/       author benchmark, plus independent/ (labeling page, protocol, scorer)
 test/       unit tests and CDK assertion tests
