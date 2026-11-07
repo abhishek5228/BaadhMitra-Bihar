@@ -4,6 +4,8 @@ import { Expired, authed } from './api'
 import { clear, load, type Cfg, type Sess } from './auth'
 import { showLogin } from './login'
 import { shouldPing, type Fix } from './pingrule'
+import { jobTitle, newJobs, since } from './crewhelp'
+import { loadLang, saveLang } from './live'
 
 // The rescue crew's own page. Phone first, Hindi first, works on a patchy network:
 // progress taps are saved on the phone and sent when the signal returns.
@@ -16,7 +18,7 @@ const D = {
     none: 'अभी आपके दल को कोई घटना नहीं सौंपी गई है। यह पेज खुद अपडेट होता है।', nav: '🧭 रास्ता दिखाएँ', enroute: '🚤 निकल पड़े', arrived: '📍 मौके पर पहुँचे',
     done: '✅ बचाव पूरा हुआ', nofind: '❌ कोई नहीं मिला', again: 'पक्का? फिर से दबाएँ', people: 'लोग', needs: 'ज़रूरत', vul: 'बच्चे / बुजुर्ग / बीमार हैं',
     queued: 'नेटवर्क नहीं। आपकी बात फ़ोन में सुरक्षित है, नेटवर्क आते ही चली जाएगी।', sent: 'भेज दिया ✓', signout: 'साइन आउट', wrongrole: 'यह खाता बचाव दल का नहीं है।',
-    noteam: 'इस खाते का दल का नाम तय नहीं है, प्रशासक से कहें।', need: { boat: 'नाव', food: 'खाना', water: 'पानी', medical: 'दवा', shelter: 'आश्रय' } as Record<Need, string>,
+    noteam: 'इस खाते का दल का नाम तय नहीं है, प्रशासक से कहें।', fresh: 'नई घटना सौंपी गई', asg: 'सौंपा गया', need: { boat: 'नाव', food: 'खाना', water: 'पानी', medical: 'दवा', shelter: 'आश्रय' } as Record<Need, string>,
     st: { enroute: 'रास्ते में', arrived: 'मौके पर' }, sess: 'सत्र समाप्त, फिर से साइन-इन करें।',
   },
   en: {
@@ -25,7 +27,7 @@ const D = {
     none: 'No incident is assigned to your team right now. This page updates itself.', nav: '🧭 Navigate', enroute: '🚤 On the way', arrived: '📍 Arrived',
     done: '✅ Rescue complete', nofind: '❌ Nobody found', again: 'Sure? Tap again', people: 'people', needs: 'Needs', vul: 'Children / elderly / sick',
     queued: 'No network. Saved on your phone and will send when the signal returns.', sent: 'Sent ✓', signout: 'Sign out', wrongrole: 'This account is not a rescue team account.',
-    noteam: 'This account has no team name set. Ask the administrator.', need: { boat: 'boat', food: 'food', water: 'water', medical: 'medicine', shelter: 'shelter' } as Record<Need, string>,
+    noteam: 'This account has no team name set. Ask the administrator.', fresh: 'New incident assigned', asg: 'Assigned', need: { boat: 'boat', food: 'food', water: 'water', medical: 'medicine', shelter: 'shelter' } as Record<Need, string>,
     st: { enroute: 'On the way', arrived: 'At the spot' }, sess: 'Session ended, please sign in again.',
   },
 }
@@ -61,8 +63,9 @@ const writeOb = (a: Act[]): void => {
 
 async function main(): Promise<void> {
   const app = document.getElementById('fd') as HTMLElement
-  let lang: Lang = navigator.language.startsWith('en') ? 'en' : 'hi'
+  let lang: Lang = loadLang(navigator.language.startsWith('en') ? 'en' : 'hi')
   let T = D[lang]
+  document.documentElement.lang = lang // the page ships as Hindi; screen readers and hyphenation must follow the language actually shown
 
   let cfg: Cfg | null = null
   try {
@@ -89,6 +92,10 @@ async function main(): Promise<void> {
   let lastFix: Fix | null = null
   let armed = '' // two-tap confirmation for done / nofind
   let sig = ''
+  const known = new Set<string>() // jobs this page has already shown
+  let firstLoad = true
+  let freshMsg = ''
+  let lock: { release(): Promise<void> } | null = null
 
   const hdr = h('div', 'fhd')
   const net = h('div', 'net hide')
@@ -107,14 +114,26 @@ async function main(): Promise<void> {
       if (e instanceof Expired) return expired()
     }
   }
+  // A phone that locks its screen stops sending positions. While sharing, ask it to stay awake (not every browser can).
+  const hold = async (): Promise<void> => {
+    try {
+      const wl = (navigator as unknown as { wakeLock?: { request(t: 'screen'): Promise<{ release(): Promise<void> }> } }).wakeLock
+      if (share && wl && !lock) lock = await wl.request('screen')
+    } catch {
+      lock = null
+    }
+  }
   const startShare = () => {
     if (!navigator.geolocation) return
     share = true
+    void hold()
     watch = navigator.geolocation.watchPosition((p) => void ping(p.coords.latitude, p.coords.longitude), () => undefined, { enableHighAccuracy: true, maximumAge: 15_000, timeout: 20_000 })
     drawShare()
   }
   const stopShare = () => {
     share = false
+    void lock?.release().catch(() => undefined)
+    lock = null
     if (watch >= 0) navigator.geolocation.clearWatch(watch)
     drawShare()
   }
@@ -153,6 +172,7 @@ async function main(): Promise<void> {
     if (keep.length < q.length) await refresh()
   }
   async function tap(i: Inc, state: string): Promise<void> {
+    freshMsg = '' // the crew has acted on it
     const a = { id: i.id, state }
     const r = await send(a)
     if (r === 'retry') {
@@ -172,6 +192,7 @@ async function main(): Promise<void> {
     const lg = h('button', 'lang', lang === 'hi' ? 'EN' : 'हिं')
     lg.onclick = () => {
       lang = lang === 'hi' ? 'en' : 'hi'
+      saveLang(lang)
       T = D[lang]
       document.documentElement.lang = lang
       sig = ''
@@ -186,11 +207,11 @@ async function main(): Promise<void> {
     const pending = readOb().length
     net.classList.toggle('hide', !(offline || pending || queuedMsg))
     net.textContent = pending || queuedMsg ? T.queued : '⚠ ' + (lang === 'hi' ? 'नेटवर्क नहीं' : 'No network')
-    const key = JSON.stringify([lang, armed, jobs.map((j) => [j.id, j.fstate, j.ppl, j.snips.length])])
+    const key = JSON.stringify([lang, armed, freshMsg, Math.floor(Date.now() / 60_000), jobs.map((j) => [j.id, j.fstate, j.ppl, j.snips.length])])
     if (key === sig) return
     sig = key
     if (!jobs.length) return void list.replaceChildren(h('p', 'none', T.none))
-    list.replaceChildren(...jobs.map(card))
+    list.replaceChildren(...(freshMsg ? [h('div', 'fresh', '🔔 ' + freshMsg)] : []), ...jobs.map(card))
   }
 
   function card(i: Inc): HTMLElement {
@@ -223,7 +244,7 @@ async function main(): Promise<void> {
       'section',
       'job',
       h('h2', '', i.place),
-      h('div', 'meta', `${i.ppl ? i.ppl + ' ' + T.people + ' · ' : ''}${i.needs.length ? T.needs + ': ' + i.needs.map((n) => T.need[n]).join(', ') : ''}${i.fstate ? ' · ' + T.st[i.fstate] : ''}`),
+      h('div', 'meta', `${i.ppl ? i.ppl + ' ' + T.people + ' · ' : ''}${i.needs.length ? T.needs + ': ' + i.needs.map((n) => T.need[n]).join(', ') : ''}${i.fstate ? ' · ' + T.st[i.fstate] : ''}${i.asg ? ' · ' + T.asg + ' ' + since(i.asg, Date.now(), lang) : ''}`),
       i.vul ? h('div', 'sos', '⚠ ' + T.vul) : null,
       ...i.snips.slice(-2).map((s) => h('blockquote', '', s.t)), // textContent only: reports are untrusted text
       h('div', 'acts', nav, btn(T.enroute, '', () => void tap(i, 'enroute')), btn(T.arrived, '', () => void tap(i, 'arrived')), confirmable('done', T.done, 'go'), confirmable('nofind', T.nofind, 'dng')),
@@ -237,6 +258,15 @@ async function main(): Promise<void> {
       if (r.data) {
         team = r.data.team
         jobs = r.data.items
+        const fresh = newJobs(known, jobs)
+        for (const j of fresh) known.add(j.id)
+        if (fresh.length && !firstLoad) {
+          freshMsg = `${T.fresh}: ${fresh.map((j) => j.place).join(', ')}`
+          navigator.vibrate?.([300, 120, 300]) // the phone is likely in a pocket
+        }
+        if (!jobs.length) freshMsg = ''
+        firstLoad = false
+        document.title = jobTitle(jobs.length, T.title)
       } else if (r.status === 403) {
         app.replaceChildren(h('p', 'none', T.wrongrole))
         return
@@ -256,7 +286,12 @@ async function main(): Promise<void> {
   if (!team) app.append(h('p', 'none', T.noteam))
   setInterval(() => void flush().then(refresh), 12_000)
   addEventListener('online', () => void flush().then(refresh))
-  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && void refresh())
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return
+    lock = null // the browser drops the wake lock when the page is hidden; take it again
+    void hold()
+    void refresh()
+  })
 }
 
 void main()

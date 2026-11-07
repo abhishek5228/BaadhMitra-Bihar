@@ -21,3 +21,5 @@ body.fld { overflow: auto; }
 .none { color: var(--mu); text-align: center; padding: 24px 0; }
 .lang { background: none; border: 1px solid var(--line); color: inherit; border-radius: 8px; padding: 4px 10px; }
 .job a.btn { display: flex; align-items: center; justify-content: center; text-decoration: none; color: inherit; }
+
+.fresh { background: rgba(245, 165, 36, 0.2); border: 1px solid rgba(245, 165, 36, 0.5); border-radius: 10px; padding: 10px 12px; margin: 0 0 10px; font-weight: 600; }
