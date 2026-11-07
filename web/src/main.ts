@@ -4,6 +4,7 @@ import { WRONGS } from '../../shared/types'
 import { sla } from '../../shared/sla'
 import { filt, type Mode } from './filter'
 import { toCsv } from './csv'
+import { chunk } from './auth'
 import { inBihar } from '../../shared/geo'
 import { connect, Expired, type Api, type Pin, type St } from './api'
 import type { Cfg } from './auth'
@@ -94,6 +95,7 @@ async function main(): Promise<void> {
     if (boot.cfg && isDemo) acts.append(mk('🔑 ' + T.login, () => (location.href = location.pathname)))
     acts.append(mk('📊 ' + T.report, openReport))
     if (can('admin')) acts.append(mk('🧾 ' + T.audit, openAudit))
+    if (api.mfa) acts.append(mk('🔐 ' + T.mfa, openMfa))
     if (api.who) acts.append(h('span', 'who', api.who + (api.roles.length ? '' : ' ⚠')))
     if (api.signOut) acts.append(mk(T.signout, () => api.signOut?.()))
     acts.append(mk(lang === 'en' ? 'हिं' : 'EN', () => setLang(lang === 'en' ? 'hi' : 'en')))
@@ -125,6 +127,42 @@ async function main(): Promise<void> {
       if (e.target === box) x.click()
     })
     queueMicrotask(() => x.focus())
+  }
+
+  async function openMfa(): Promise<void> {
+    const m = api.mfa
+    if (!m) return
+    try {
+      const { secret, uri } = await m.start()
+      const box = h('div', 'modal')
+      const x = h('button', 'btn ghost close', '✕')
+      x.onclick = () => box.remove()
+      const code = h('input', 'find') as HTMLInputElement
+      code.inputMode = 'numeric'
+      code.autocomplete = 'one-time-code'
+      code.maxLength = 7
+      code.setAttribute('aria-label', T.mfaCode)
+      code.placeholder = T.mfaCode
+      const go = h('button', 'btn', T.mfaOn)
+      const msg = h('p', 'mu')
+      go.onclick = async () => {
+        try {
+          await m.confirm(code.value)
+          msg.textContent = T.mfaDone
+          go.remove()
+          code.remove()
+        } catch {
+          msg.textContent = T.mfaFail
+        }
+      }
+      const link = h('a', '', T.mfaOpen) as HTMLAnchorElement
+      link.href = uri
+      box.append(h('div', 'card', x, h('h2', '', T.mfa), h('p', 'mu', T.mfaWhy), h('p', '', T.mfaKey), h('code', 'key', chunk(secret)), link, code, go, msg))
+      app.append(box)
+      wire(box, x)
+    } catch {
+      say(T.err, true)
+    }
   }
 
   async function openAudit(): Promise<void> {

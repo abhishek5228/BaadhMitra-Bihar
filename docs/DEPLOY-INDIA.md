@@ -59,7 +59,7 @@ The crew signs in at `<SiteUrl>/field.html`. A crew shows on the dispatcher's te
 
 Remove access with `aws cognito-idp admin-disable-user --user-pool-id POOL --username <email>`.
 
-**Known gap:** optional MFA is enabled on the pool, but the dashboard has no screen to enrol an authenticator app yet, and it asks for a code only if a user is already enrolled. Before a real pilot, add enrolment or require MFA through your identity provider.
+**Two-step sign-in:** optional MFA is enabled on the pool and each person can enrol an authenticator app from the dashboard (🔐 button); sign-in then asks for a code. Enrolment is voluntary and has not yet been exercised against a live pool, so test it with your own account first. Before a real pilot, decide whether to make it mandatory (set the pool's MFA to required) once everyone has enrolled.
 
 ## 4. Real river data
 

@@ -9,6 +9,7 @@ export interface Cfg {
 }
 export interface Sess {
   id: string // ID token (sent to API Gateway)
+  acc?: string // access token, needed only for the account's own security settings (two-step sign-in)
   refresh: string
   exp: number // ms
   email: string
@@ -19,7 +20,9 @@ const K = 'bmsess'
 const ROLES: Role[] = ['district_officer', 'control_room', 'viewer', 'field_team']
 
 type Res = {
-  AuthenticationResult?: { IdToken: string; RefreshToken?: string; ExpiresIn: number }
+  AuthenticationResult?: { IdToken: string; AccessToken?: string; RefreshToken?: string; ExpiresIn: number }
+  SecretCode?: string
+  Status?: string
   ChallengeName?: string
   Session?: string
   message?: string
@@ -52,7 +55,7 @@ function sess(res: NonNullable<Res['AuthenticationResult']>, old?: Sess): Sess {
   const c = claims(res.IdToken)
   const g = c['cognito:groups']
   const roles = ROLES.filter((r) => Array.isArray(g) && g.includes(r))
-  return { id: res.IdToken, refresh: res.RefreshToken ?? old?.refresh ?? '', exp: Date.now() + res.ExpiresIn * 1000, email: String(c.email ?? c['cognito:username'] ?? ''), roles }
+  return { id: res.IdToken, acc: res.AccessToken ?? old?.acc, refresh: res.RefreshToken ?? old?.refresh ?? '', exp: Date.now() + res.ExpiresIn * 1000, email: String(c.email ?? c['cognito:username'] ?? ''), roles }
 }
 
 function next(res: Res, user: string): Step {
@@ -107,4 +110,36 @@ export async function token(cfg: Cfg, s: Sess): Promise<string | null> {
   } catch {
     return null
   }
+}
+
+// ---- two-step sign-in (authenticator app) --------------------------------------------------------------
+
+/** otpauth:// address that authenticator apps understand (opens directly on a phone, or paste the key by hand). */
+export function otpauth(email: string, secret: string): string {
+  const who = encodeURIComponent(email || 'staff')
+  return `otpauth://totp/BaadhMitra:${who}?secret=${encodeURIComponent(secret)}&issuer=BaadhMitra`
+}
+
+/** Groups a secret in fours so it is easy to read out and type: ABCD EFGH ... */
+export const chunk = (secret: string): string => secret.replace(/\s+/g, '').replace(/(.{4})/g, '$1 ').trim()
+
+async function access(cfg: Cfg, s: Sess): Promise<string> {
+  await token(cfg, s) // refreshes both tokens when near expiry
+  if (!s.acc) throw new Error('Please sign out and sign in again to change security settings')
+  return s.acc
+}
+
+/** Step 1: ask Cognito for a new authenticator secret for the signed-in person. */
+export async function mfaStart(cfg: Cfg, s: Sess): Promise<{ secret: string; uri: string }> {
+  const r = await idp(cfg, 'AssociateSoftwareToken', { AccessToken: await access(cfg, s) })
+  if (!r.SecretCode) throw new Error('No secret returned')
+  return { secret: r.SecretCode, uri: otpauth(s.email, r.SecretCode) }
+}
+
+/** Step 2: prove the app works by entering its current 6-digit code, then make two-step sign-in required for this account. */
+export async function mfaConfirm(cfg: Cfg, s: Sess, code: string): Promise<void> {
+  const acc = await access(cfg, s)
+  const v = await idp(cfg, 'VerifySoftwareToken', { AccessToken: acc, UserCode: code.replace(/\s+/g, ''), FriendlyDeviceName: 'Authenticator' })
+  if (v.Status !== 'SUCCESS') throw new Error('That code was not accepted')
+  await idp(cfg, 'SetUserMFAPreference', { AccessToken: acc, SoftwareTokenMfaSettings: { Enabled: true, PreferredMfa: true } })
 }

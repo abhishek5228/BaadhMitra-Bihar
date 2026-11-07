@@ -1,5 +1,5 @@
 import type { Alert, AuditRow, Fb, Gauge, Inc, Metrics, Role, Stats, Team, Wrong } from '../../shared/types'
-import { clear, load, token, type Cfg, type Sess } from './auth'
+import { clear, load, mfaConfirm, mfaStart, token, type Cfg, type Sess } from './auth'
 import { demoApi } from './demo'
 
 export type Pin = { lat: number; lon: number }
@@ -24,6 +24,7 @@ export interface Api {
   feedback(id: string, ok: boolean, wrong: Wrong[]): Promise<void>
   metrics(): Promise<Metrics>
   fbExport(): Promise<Fb[]>
+  mfa?: { start(): Promise<{ secret: string; uri: string }>; confirm(code: string): Promise<void> } // live only
   surge?: () => void // demo only
 }
 
@@ -93,6 +94,7 @@ function live(cfg: Cfg, ss: Sess): Api {
     dismiss: async (id) => {
       await call('POST', `/incidents/${encodeURIComponent(id)}/dismiss`, {})
     },
+    mfa: { start: () => mfaStart(cfg, ss), confirm: (code) => mfaConfirm(cfg, ss, code) },
     audit: async () => (await call<{ items: AuditRow[] }>('GET', '/audit')).items,
     teams: async () => (await call<{ items: Team[] }>('GET', '/teams')).items,
     feedback: async (id, ok, wrong) => {
