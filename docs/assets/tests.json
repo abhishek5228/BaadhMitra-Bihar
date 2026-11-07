@@ -1,7 +1,7 @@
 {
- "passed": 116,
+ "passed": 119,
  "failed": 0,
- "total": 116,
+ "total": 119,
  "files": [
   {
    "file": "csv.test.ts",
@@ -10,25 +10,25 @@
      "suite": "incident CSV export",
      "title": "quotes commas, quotes and newlines",
      "status": "passed",
-     "ms": 1.359640000000013
+     "ms": 1.2786099999999863
     },
     {
      "suite": "incident CSV export",
      "title": "defuses spreadsheet formulas that come from citizen text",
      "status": "passed",
-     "ms": 0.590755999999999
+     "ms": 0.5299289999999814
     },
     {
      "suite": "incident CSV export",
      "title": "writes one header and one line per incident with the same column count",
      "status": "passed",
-     "ms": 2.064791000000014
+     "ms": 2.0047209999999893
     },
     {
      "suite": "incident CSV export",
      "title": "never exports reporter ids",
      "status": "passed",
-     "ms": 0.29675399999996444
+     "ms": 0.22217000000000553
     }
    ]
   },
@@ -39,37 +39,37 @@
      "suite": "queue search and filters",
      "title": "keeps the ranked order and returns everything for an empty query",
      "status": "passed",
-     "ms": 1.5993469999999945
+     "ms": 1.5354150000000004
     },
     {
      "suite": "queue search and filters",
      "title": "matches place and need, ignoring case and spaces around",
      "status": "passed",
-     "ms": 0.5206660000000056
+     "ms": 0.4779620000000193
     },
     {
      "suite": "queue search and filters",
      "title": "overdue shows only incidents past the warning mark",
      "status": "passed",
-     "ms": 0.27174300000001494
+     "ms": 0.30227800000000116
     },
     {
      "suite": "queue search and filters",
      "title": "unassigned hides incidents a crew already has",
      "status": "passed",
-     "ms": 0.20665100000002212
+     "ms": 0.2261999999999773
     },
     {
      "suite": "queue search and filters",
      "title": "works with Devanagari place names",
      "status": "passed",
-     "ms": 0.21223100000000272
+     "ms": 0.22563900000000103
     },
     {
      "suite": "queue search and filters",
      "title": "combines a search with a filter",
      "status": "passed",
-     "ms": 0.22810499999999934
+     "ms": 0.15306799999999043
     }
    ]
   },
@@ -80,109 +80,121 @@
      "suite": "dialect vocabulary (best effort, needs native-speaker review)",
      "title": "reads Bhojpuri/Maithili distress words",
      "status": "passed",
-     "ms": 7.031664000000035
+     "ms": 6.990968000000009
     },
     {
      "suite": "dismissed incidents",
      "title": "score is zero while dismissed",
      "status": "passed",
-     "ms": 0.9129950000000235
+     "ms": 0.7290360000000078
     },
     {
      "suite": "dismissed incidents",
      "title": "a new independent reporter re-opens it",
      "status": "passed",
-     "ms": 0.45869799999996985
+     "ms": 0.23675900000000638
     },
     {
      "suite": "dismissed incidents",
      "title": "the same reporter repeating does not",
      "status": "passed",
-     "ms": 0.3904590000000212
+     "ms": 0.2689690000000269
     },
     {
      "suite": "villages",
      "title": "empty index finds nothing",
      "status": "passed",
-     "ms": 0.28446400000001404
+     "ms": 0.2735129999999799
     },
     {
      "suite": "villages",
      "title": "needs a capital or locator, so ordinary words are skipped",
      "status": "passed",
-     "ms": 1.0241470000000277
+     "ms": 1.0303109999999833
     },
     {
      "suite": "villages",
      "title": "picks the closest namesake and flags a guess",
      "status": "passed",
-     "ms": 0.3735619999999926
+     "ms": 0.2872610000000009
     },
     {
      "suite": "gauge feed",
      "title": "drops implausible readings",
      "status": "passed",
-     "ms": 0.39799899999997024
+     "ms": 0.4218319999999949
+    },
+    {
+     "suite": "gauge feed",
+     "title": "drops a reading whose position is nowhere near the region",
+     "status": "passed",
+     "ms": 0.59231699999998
+    },
+    {
+     "suite": "gauge feed",
+     "title": "keeps only the newest reading of a station listed twice",
+     "status": "passed",
+     "ms": 0.341308999999967
     },
     {
      "suite": "gauge feed",
      "title": "accepts seconds or ms timestamps and flags stale",
      "status": "passed",
-     "ms": 0.30375500000002376
+     "ms": 0.1882360000000176
     },
     {
      "suite": "whatsapp webhook",
      "title": "verifies signature and rejects wrong or missing",
      "status": "passed",
-     "ms": 0.7110910000000104
+     "ms": 0.6557660000000283
     },
     {
      "suite": "whatsapp webhook",
      "title": "flattens messages",
      "status": "passed",
-     "ms": 0.8086309999999912
+     "ms": 0.737248999999963
     },
     {
      "suite": "whatsapp webhook",
      "title": "tolerates junk",
      "status": "passed",
-     "ms": 0.12915200000003324
+     "ms": 0.19350199999996676
     },
     {
      "suite": "citizen report page",
      "title": "form fields become a sentence the extractor reads correctly",
      "status": "passed",
-     "ms": 3.163546999999994
+     "ms": 5.04116300000004
     },
     {
      "suite": "citizen report page",
      "title": "keeps an unsent report and delivers it once the network is back",
      "status": "passed",
-     "ms": 1.1374059999999986
+     "ms": 0.8262250000000222
     },
     {
      "suite": "overdue clock and response metrics",
      "title": "urgent incidents get half the time before they are overdue",
      "status": "passed",
-     "ms": 0.381526000000008
+     "ms": 0.24267300000002479
     },
     {
      "suite": "overdue clock and response metrics",
      "title": "an assigned incident goes overdue when the team is silent, and a field update resets it",
      "status": "passed",
-     "ms": 0.5573080000000346
+     "ms": 0.5627259999999978
     },
     {
      "suite": "overdue clock and response metrics",
      "title": "resolved or dismissed incidents are never overdue",
      "status": "passed",
-     "ms": 0.08614000000000033
+     "ms": 0.07674700000001167
     },
     {
      "suite": "overdue clock and response metrics",
      "title": "metrics use only recorded times and the latest verdict per incident",
      "status": "passed",
-     "ms": 0.760548999999969
+     "ms": 0.6644919999999956
     }
    ]
   },
@@ -193,73 +205,73 @@
      "suite": "independent accuracy kit",
      "title": "parses quoted CSV with commas, quotes and newlines",
      "status": "passed",
-     "ms": 1.5790489999999977
+     "ms": 1.4912899999999922
     },
     {
      "suite": "independent accuracy kit",
      "title": "reads labels, mapping Hindi and Roman place names to the gazetteer",
      "status": "passed",
-     "ms": 3.6248980000000017
+     "ms": 3.5496269999999868
     },
     {
      "suite": "independent accuracy kit",
      "title": "refuses a file with no severity or text column",
      "status": "passed",
-     "ms": 0.7710970000000259
+     "ms": 0.9093790000000013
     },
     {
      "suite": "independent accuracy kit",
      "title": "wilson interval widens with a small sample",
      "status": "passed",
-     "ms": 0.30667499999998427
+     "ms": 0.3042199999999866
     },
     {
      "suite": "independent accuracy kit",
      "title": "scores a perfect prediction at 100% and counts unusable ones",
      "status": "passed",
-     "ms": 5.076571999999999
+     "ms": 5.418227000000002
     },
     {
      "suite": "independent accuracy kit",
      "title": "measures agreement between two labelers",
      "status": "passed",
-     "ms": 0.7452830000000006
+     "ms": 0.6970359999999971
     },
     {
      "suite": "gauge feed adapter",
      "title": "reshapes a foreign feed, applies units and fills station details",
      "status": "passed",
-     "ms": 1.0205349999999953
+     "ms": 1.2647509999999897
     },
     {
      "suite": "gauge feed adapter",
      "title": "never invents values: unknown station or missing level is dropped",
      "status": "passed",
-     "ms": 0.23660399999999981
+     "ms": 0.24404400000000237
     },
     {
      "suite": "gauge feed adapter",
      "title": "survives a feed with the wrong shape",
      "status": "passed",
-     "ms": 0.2982319999999845
+     "ms": 0.34379099999998175
     },
     {
      "suite": "gauge feed adapter",
      "title": "parses the env map defensively",
      "status": "passed",
-     "ms": 0.2773220000000265
+     "ms": 0.41752299999998854
     },
     {
      "suite": "gauge feed credentials",
      "title": "builds one header from the secret",
      "status": "passed",
-     "ms": 0.2344969999999762
+     "ms": 0.36033199999999965
     },
     {
      "suite": "gauge feed credentials",
      "title": "returns nothing for empty, malformed or unsafe secrets",
      "status": "passed",
-     "ms": 0.39598799999998846
+     "ms": 0.4088120000000117
     }
    ]
   },
@@ -270,43 +282,43 @@
      "suite": "team suggestion",
      "title": "puts the nearest free crew first with distance and time",
      "status": "passed",
-     "ms": 1.9312189999999987
+     "ms": 1.7640220000000113
     },
     {
      "suite": "team suggestion",
      "title": "prefers a free crew over a slightly closer busy one, but a much closer busy one can win",
      "status": "passed",
-     "ms": 0.5992259999999874
+     "ms": 0.4309939999999983
     },
     {
      "suite": "team suggestion",
      "title": "marks old positions and charges for them",
      "status": "passed",
-     "ms": 0.2852670000000046
+     "ms": 0.4555919999999958
     },
     {
      "suite": "team suggestion",
      "title": "leaves out crews with no position and respects the limit",
      "status": "passed",
-     "ms": 0.9190949999999987
+     "ms": 1.0365509999999745
     },
     {
      "suite": "time to danger",
      "title": "divides the gap by the rate",
      "status": "passed",
-     "ms": 0.28295099999996864
+     "ms": 0.16833599999998228
     },
     {
      "suite": "time to danger",
      "title": "is null when falling, flat, noisy, stale or already over",
      "status": "passed",
-     "ms": 0.354658000000029
+     "ms": 0.30955000000000155
     },
     {
      "suite": "time to danger",
      "title": "does not promise a time beyond two days",
      "status": "passed",
-     "ms": 0.16028699999998253
+     "ms": 0.18598099999999818
     }
    ]
   },
@@ -317,31 +329,31 @@
      "suite": "two-step sign-in enrolment",
      "title": "builds an otpauth address and a readable key",
      "status": "passed",
-     "ms": 1.2520079999999894
+     "ms": 1.3314149999999927
     },
     {
      "suite": "two-step sign-in enrolment",
      "title": "asks Cognito for a secret using the access token",
      "status": "passed",
-     "ms": 0.7542329999999993
+     "ms": 0.6396119999999996
     },
     {
      "suite": "two-step sign-in enrolment",
      "title": "turns two-step on only after the code is verified",
      "status": "passed",
-     "ms": 0.7107129999999984
+     "ms": 0.7664069999999867
     },
     {
      "suite": "two-step sign-in enrolment",
      "title": "does not switch it on when the code is wrong",
      "status": "passed",
-     "ms": 1.5657129999999881
+     "ms": 1.7127509999999972
     },
     {
      "suite": "two-step sign-in enrolment",
      "title": "asks for a fresh sign-in when the session has no access token",
      "status": "passed",
-     "ms": 0.3620689999999911
+     "ms": 0.43883100000002173
     }
    ]
   },
@@ -352,31 +364,31 @@
      "suite": "crew location pings",
      "title": "sends the first fix",
      "status": "passed",
-     "ms": 1.0309540000000084
+     "ms": 1.0428110000000004
     },
     {
      "suite": "crew location pings",
      "title": "never sends faster than the minimum gap, even when moving fast",
      "status": "passed",
-     "ms": 0.25737499999999613
+     "ms": 0.24180499999999938
     },
     {
      "suite": "crew location pings",
      "title": "sends when the crew has moved about 50 m or more",
      "status": "passed",
-     "ms": 0.21171699999999305
+     "ms": 0.17948200000000725
     },
     {
      "suite": "crew location pings",
      "title": "stays quiet while standing still, with GPS jitter",
      "status": "passed",
-     "ms": 0.16589799999999855
+     "ms": 0.11300499999998692
     },
     {
      "suite": "crew location pings",
      "title": "sends a heartbeat after a few minutes even without moving",
      "status": "passed",
-     "ms": 0.22155000000000769
+     "ms": 0.14728199999998992
     }
    ]
   },
@@ -387,91 +399,97 @@
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "accepts a report, redacts PII, and builds a ranked incident",
      "status": "passed",
-     "ms": 13.164552000000072
+     "ms": 13.863156000000004
     },
     {
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "rate-limits one sender but not others",
      "status": "passed",
-     "ms": 4.070214000000078
+     "ms": 5.441214999999943
     },
     {
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "treats an identical resend as a duplicate and counts a repeat sender once",
      "status": "passed",
-     "ms": 4.194328999999925
+     "ms": 5.789124000000015
     },
     {
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "keeps unplaceable reports for a human instead of dropping them",
      "status": "passed",
-     "ms": 1.9264080000000376
+     "ms": 2.10740700000008
     },
     {
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "uses a phone GPS pin over the text, and rejects pins outside Bihar",
      "status": "passed",
-     "ms": 1.8081059999999525
+     "ms": 2.0792750000000524
     },
     {
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "assign lowers the score; resolve removes it from the queue",
      "status": "passed",
-     "ms": 2.4996659999999338
+     "ms": 2.58615599999996
     },
     {
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "alerts the ops topic once when an incident first crosses priority 75",
      "status": "passed",
-     "ms": 1.9480050000000801
+     "ms": 2.1292709999999033
     },
     {
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "rejects bad input",
      "status": "passed",
-     "ms": 0.41127899999992223
+     "ms": 0.4570609999999533
+    },
+    {
+     "suite": "text report -> queue -> extractor -> dispatcher API",
+     "title": "assign needs a team name, trims a long one, and refuses an unknown incident",
+     "status": "passed",
+     "ms": 1.4879760000000033
     },
     {
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "enforces roles and writes an audit trail",
      "status": "passed",
-     "ms": 1.5741409999999405
+     "ms": 1.4928710000000365
     },
     {
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "dismissed incidents leave the queue and a new independent report re-opens them",
      "status": "passed",
-     "ms": 1.741076000000021
+     "ms": 1.978332000000023
     },
     {
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "field team flow: ping, see only own incident, report progress, close it",
      "status": "passed",
-     "ms": 9.330408000000034
+     "ms": 9.682017999999971
     },
     {
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "a team that finds nobody hands the incident back to the queue, flagged for review",
      "status": "passed",
-     "ms": 1.373371999999904
+     "ms": 1.414062000000058
     },
     {
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "staff roles cannot use field routes, and field teams cannot use staff routes",
      "status": "passed",
-     "ms": 0.8286969999999201
+     "ms": 0.9558809999999767
     },
     {
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "overdue sweep notifies once per level and restarts after a change",
      "status": "passed",
-     "ms": 15.232749000000013
+     "ms": 14.884975000000054
     },
     {
      "suite": "text report -> queue -> extractor -> dispatcher API",
      "title": "records dispatcher feedback and reports response times and agreement",
      "status": "passed",
-     "ms": 2.0510790000000725
+     "ms": 2.650751000000014
     }
    ]
   },
@@ -482,25 +500,25 @@
      "suite": "offline outbox",
      "title": "keeps a report when sending fails and counts the try",
      "status": "passed",
-     "ms": 1.8543630000000064
+     "ms": 2.0307229999999947
     },
     {
      "suite": "offline outbox",
      "title": "removes a report once it is sent",
      "status": "passed",
-     "ms": 0.4707010000000196
+     "ms": 0.3812199999999848
     },
     {
      "suite": "offline outbox",
      "title": "never sends the same report twice when flushes overlap",
      "status": "passed",
-     "ms": 20.505154000000005
+     "ms": 24.834630000000004
     },
     {
      "suite": "offline outbox",
      "title": "stops at the first failure instead of hammering a dead network",
      "status": "passed",
-     "ms": 0.4435019999999952
+     "ms": 0.773461999999995
     }
    ]
   },
@@ -511,133 +529,133 @@
      "suite": "geo",
      "title": "round-trips a Patna point to within one cell",
      "status": "passed",
-     "ms": 1.463560000000001
+     "ms": 1.2732249999999965
     },
     {
      "suite": "geo",
      "title": "matches the reference geohash for a well known point",
      "status": "passed",
-     "ms": 0.3362719999999797
+     "ms": 0.31778900000000476
     },
     {
      "suite": "geo",
      "title": "knows what is inside Bihar",
      "status": "passed",
-     "ms": 0.19688500000000886
+     "ms": 0.16481300000000942
     },
     {
      "suite": "gazetteer",
      "title": "finds Hindi, Hinglish and English place names",
      "status": "passed",
-     "ms": 2.1468439999999873
+     "ms": 1.934505999999999
     },
     {
      "suite": "gazetteer",
      "title": "does not match a short name inside another word",
      "status": "passed",
-     "ms": 0.21651500000001533
+     "ms": 0.16142600000000584
     },
     {
      "suite": "gazetteer",
      "title": "does not mistake common Hindi words for place names",
      "status": "passed",
-     "ms": 0.6636670000000038
+     "ms": 0.44493599999998423
     },
     {
      "suite": "gazetteer",
      "title": "converts Devanagari digits",
      "status": "passed",
-     "ms": 0.25066799999999034
+     "ms": 0.31037399999999593
     },
     {
      "suite": "redact",
      "title": "removes phone, aadhaar-like, upi and email",
      "status": "passed",
-     "ms": 1.087017000000003
+     "ms": 0.849221
     },
     {
      "suite": "redact",
      "title": "keeps normal text",
      "status": "passed",
-     "ms": 0.3497629999999958
+     "ms": 0.21795499999998924
     },
     {
      "suite": "rule extractor",
      "title": "reads a Hindi message",
      "status": "passed",
-     "ms": 2.288599999999974
+     "ms": 2.193579999999997
     },
     {
      "suite": "rule extractor",
      "title": "reads Hinglish",
      "status": "passed",
-     "ms": 1.9499350000000106
+     "ms": 1.596053000000012
     },
     {
      "suite": "rule extractor",
      "title": "gives low confidence to vague text",
      "status": "passed",
-     "ms": 0.46860300000000166
+     "ms": 0.4589289999999835
     },
     {
      "suite": "rule extractor",
      "title": "caps confidence",
      "status": "passed",
-     "ms": 0.38583900000000426
+     "ms": 0.336609999999979
     },
     {
      "suite": "llm output validation",
      "title": "accepts a good object and drops unknown needs",
      "status": "passed",
-     "ms": 0.6886570000000063
+     "ms": 0.7242909999999938
     },
     {
      "suite": "llm output validation",
      "title": "rejects out-of-range or malformed values",
      "status": "passed",
-     "ms": 0.17374800000001756
+     "ms": 0.14531499999998232
     },
     {
      "suite": "llm output validation",
      "title": "extracts JSON wrapped in prose or fences",
      "status": "passed",
-     "ms": 0.18139199999998823
+     "ms": 0.18584200000000806
     },
     {
      "suite": "llm output validation",
      "title": "neutralises tag break-out in the prompt",
      "status": "passed",
-     "ms": 0.17713699999998767
+     "ms": 0.17289500000001112
     },
     {
      "suite": "incident merge and score",
      "title": "counts one sender once but keeps every raw report",
      "status": "passed",
-     "ms": 0.6832719999999881
+     "ms": 0.49774600000000646
     },
     {
      "suite": "incident merge and score",
      "title": "scores more reporters higher",
      "status": "passed",
-     "ms": 0.7196690000000103
+     "ms": 0.3344069999999988
     },
     {
      "suite": "incident merge and score",
      "title": "lowers score once assigned, zero once resolved, re-opens on new report",
      "status": "passed",
-     "ms": 1.8831799999999816
+     "ms": 2.559743999999995
     },
     {
      "suite": "incident merge and score",
      "title": "decays stale incidents",
      "status": "passed",
-     "ms": 0.18932899999998654
+     "ms": 0.12190400000000068
     },
     {
      "suite": "incident merge and score",
      "title": "flags low-confidence singletons for review but not corroborated ones",
      "status": "passed",
-     "ms": 0.38937000000001376
+     "ms": 0.36124399999999923
     }
    ]
   },
@@ -648,85 +666,85 @@
      "suite": "infrastructure guarantees",
      "title": "has a dead-letter queue wired with 3 receives",
      "status": "passed",
-     "ms": 9.148126999999931
+     "ms": 12.733944999999949
     },
     {
      "suite": "infrastructure guarantees",
      "title": "table is on-demand, has TTL and point-in-time recovery, and survives stack deletion",
      "status": "passed",
-     "ms": 6.228863000000274
+     "ms": 11.133297000000312
     },
     {
      "suite": "infrastructure guarantees",
      "title": "extractor uses partial batch responses and capped concurrency",
      "status": "passed",
-     "ms": 1.676206000000093
+     "ms": 1.753751999999622
     },
     {
      "suite": "infrastructure guarantees",
      "title": "only citizen intake and the signed WhatsApp webhook are public; staff routes need Cognito",
      "status": "passed",
-     "ms": 5.90032199999996
+     "ms": 9.984112999999525
     },
     {
      "suite": "infrastructure guarantees",
      "title": "has a staff user pool with no self sign-up, 12+ char passwords and four role groups",
      "status": "passed",
-     "ms": 2.1718439999999646
+     "ms": 1.5737639999997555
     },
     {
      "suite": "infrastructure guarantees",
      "title": "sweeps for overdue incidents every 5 minutes",
      "status": "passed",
-     "ms": 5.553901999999653
+     "ms": 1.3598910000000615
     },
     {
      "suite": "infrastructure guarantees",
      "title": "keeps WhatsApp credentials in Secrets Manager, not in Lambda env values",
      "status": "passed",
-     "ms": 0.5934189999998125
+     "ms": 8.795576999999867
     },
     {
      "suite": "infrastructure guarantees",
      "title": "all buckets block public access and require TLS",
      "status": "passed",
-     "ms": 1.2003219999996873
+     "ms": 1.3681390000001556
     },
     {
      "suite": "infrastructure guarantees",
      "title": "raises alarms for the DLQ, queue age, extractor and WhatsApp errors",
      "status": "passed",
-     "ms": 0.2776610000000801
+     "ms": 0.3689620000004652
     },
     {
      "suite": "infrastructure guarantees",
      "title": "listens for finished Transcribe jobs and polls gauges on a schedule",
      "status": "passed",
-     "ms": 6.6629430000002685
+     "ms": 11.454225000000406
     },
     {
      "suite": "opt-in edge protection",
      "title": "adds a WAF only when asked",
      "status": "passed",
-     "ms": 791.9831749999998
+     "ms": 770.764674
     },
     {
      "suite": "foreign gauge feed mapping",
      "title": "passes a minified, validated map to the gauge Lambda, and rejects invalid JSON",
      "status": "passed",
-     "ms": 256.8955070000002
+     "ms": 362.0425150000001
     },
     {
      "suite": "gauge feed credential",
      "title": "exists only when an official feed is configured and is readable by the Lambdas that need secrets",
      "status": "passed",
-     "ms": 310.8512490000003
+     "ms": 278.68957599999976
     },
     {
      "suite": "CORS lock-down",
      "title": "defaults to open for the demo and restricts to one origin when asked",
      "status": "passed",
-     "ms": 245.8151339999995
+     "ms": 249.9650190000002
     }
    ]
   },
@@ -737,25 +755,25 @@
      "suite": "village importer",
      "title": "reads nodes and the centre of ways, skipping unnamed or unplaced elements",
      "status": "passed",
-     "ms": 1.6518130000000042
+     "ms": 1.526773999999989
     },
     {
      "suite": "village importer",
      "title": "keeps only Bihar villages, removes duplicates, and links each to a nearby town",
      "status": "passed",
-     "ms": 1.4728410000000167
+     "ms": 1.3663329999999974
     },
     {
      "suite": "village importer",
      "title": "reads a CSV with quoted commas and any column order",
      "status": "passed",
-     "ms": 1.3806210000000192
+     "ms": 1.0262789999999882
     },
     {
      "suite": "village importer",
      "title": "imported villages are found in a message",
      "status": "passed",
-     "ms": 2.0819960000000037
+     "ms": 1.851147999999995
     }
    ]
   }
