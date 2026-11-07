@@ -16,6 +16,10 @@ For the people operating BaadhMitra in a flood control room. BaadhMitra ranks an
 - The header shows a count of **unplaced reports**: messages that could not be put on the map. Someone should read them (`GET /unplaced`; a list screen is not built into the dashboard yet) and place or forward them by hand.
 - A score is a suggestion. Children, elderly, pregnancy and medical need raise it, but a reporter can be wrong in both directions.
 
+## Faster with the keyboard
+
+`/` goes to search. `j` and `k` move down and up the queue. `Esc` closes the detail. The 🔔 button in the header turns on a beep for new urgent incidents; it is off until someone turns it on, and the browser only allows sound after that click. To send a crew an incident, use the WhatsApp or copy buttons on it: the brief has the place, people, needs and map link, and never the citizens' own words.
+
 ## Overdue clock
 
 Each queue row can show a badge such as `⏰ 22m`: amber is a warning, red is overdue. The header counts overdue incidents.
