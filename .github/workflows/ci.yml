@@ -63,5 +63,5 @@ jobs:
           java-version: '21'
       - run: cd go && go vet ./... && go test ./...
       - run: cd rust && cargo test
-      - run: javac -d /tmp/jc java/Priority.java && java -cp /tmp/jc Priority conformance/vectors.tsv
+      - run: javac -d /tmp/jc java/*.java && java -cp /tmp/jc Verify conformance/vectors.tsv
       - run: cd python && python3 -m unittest discover -s tests -t .
