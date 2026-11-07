@@ -37,6 +37,9 @@ Open an incident and answer *Did the system read this correctly?* If not, tick w
 | Situation | Do this |
 | --- | --- |
 | Reports stop appearing | CloudWatch dashboard `BaadhMitra`: is the queue age rising? Is the dead-letter queue above 0? Ask a district officer to press replay (`POST /admin/replay`). |
+| Overdue incidents pile up | Open the overdue filter. Assign the oldest urgent ones first. If crews are not answering, say so to the district officer; do not leave them red. |
+| Extractor error alarm | Reports are still saved and shown as needing review; read them by hand. Ask a developer to check the extractor logs. |
+| Many `RateLimited` events from one sender | One phone is sending more than the hourly limit. Usually a panicking family; read their latest message before ignoring it. |
 | Gauge feed alarm | The source is down. Readings stay but are grey. Use the department's own gauge reports until it is back. |
 | WhatsApp error alarm | Check the Meta token in Secrets Manager; Meta retries for a while. Citizens can still use the web page and 112. |
 | Many near-identical reports from new senders | Possible spam. Open the incident, read the messages, dismiss if false. Tell the district officer (WAF can be turned on). |
