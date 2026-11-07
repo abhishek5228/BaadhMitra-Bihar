@@ -47,5 +47,21 @@ jobs:
       - run: npm ci
       # regenerate the vectors from the TypeScript; fail if the committed file is stale
       - run: npm run vectors
-      - run: git diff --exit-code conformance/vectors.json
+      - run: git diff --exit-code conformance
       - run: dotnet run -c Release --project dotnet/Conformance -- conformance/vectors.json
+
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: cd go && go vet ./... && go test ./...
+      - run: cd rust && cargo test
+      - run: javac -d /tmp/jc java/Priority.java && java -cp /tmp/jc Priority conformance/vectors.tsv
+      - run: cd python && python3 -m unittest discover -s tests -t .
