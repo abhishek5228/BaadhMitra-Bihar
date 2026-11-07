@@ -9,6 +9,7 @@ import { suggest } from '../../shared/suggest'
 import { hoursToDanger } from '../../shared/trend'
 import { chunk } from './auth'
 import { brief, mapLink, waLink } from './share'
+import { lastGood, loadLang, loadSound, newUrgent, saveLang, saveSound, step, tabTitle } from './live'
 import { inBihar } from '../../shared/geo'
 import { connect, Expired, type Api, type Pin, type St } from './api'
 import type { Cfg } from './auth'
@@ -45,7 +46,7 @@ async function main(): Promise<void> {
   const boot = await connect()
   const { api } = boot
   const isDemo = api.mode === 'demo'
-  let lang: Lang = navigator.language.startsWith('hi') ? 'hi' : 'en'
+  let lang: Lang = loadLang(navigator.language.startsWith('hi') ? 'hi' : 'en')
   let T = dict(lang)
   let incs: Inc[] = []
   let gs: Gauge[] = []
@@ -59,6 +60,9 @@ async function main(): Promise<void> {
   let pin: Pin | undefined
   const seen = new Set<string>()
   let first = true
+  let lastOk = 0 // time of the last refresh that worked
+  let sound = loadSound()
+  const hot = new Set<string>() // urgent incidents already on screen (and already announced)
 
   const app = document.getElementById('app') as HTMLElement
   const stage = h('div', 'stage')
@@ -84,10 +88,36 @@ async function main(): Promise<void> {
     setTimeout(() => toast.classList.add('hide'), 6000)
   }
 
+  // A short two-tone beep for a new urgent incident. Off unless the dispatcher turned it on; browsers only allow
+  // sound after a click, which is why switching it on plays one beep.
+  let ac: AudioContext | null = null
+  function beep(): void {
+    try {
+      ac ??= new AudioContext()
+      void ac.resume()
+      const t = ac.currentTime
+      for (const [d, f] of [[0, 880], [0.24, 660]] as const) {
+        const o = ac.createOscillator()
+        const g = ac.createGain()
+        o.frequency.value = f
+        g.gain.setValueAtTime(0.0001, t + d)
+        g.gain.exponentialRampToValueAtTime(0.25, t + d + 0.02)
+        g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.22)
+        o.connect(g).connect(ac.destination)
+        o.start(t + d)
+        o.stop(t + d + 0.24)
+      }
+    } catch {
+      /* no audio device: the toast still shows */
+    }
+  }
+
   // ------------------------------------------------------------------ header
   function drawTop(): void {
     const late = incs.filter((i) => sla(i, Date.now()).lvl === 2).length
-    if (!changed('top', [lang, st, incs.length, api.mode, api.who, late])) return
+    document.title = tabTitle(incs.filter((i) => i.status === 'open').length, late, T.title)
+    const off = lastGood(lastOk, Date.now())
+    if (!changed('top', [lang, st, incs.length, api.mode, api.who, late, off, sound])) return
     const mode = h('span', 'mode ' + api.mode, api.mode === 'live' ? T.live : T.demo)
     const mk = (label: string, fn: () => void) => {
       const b = h('button', 'btn', label)
@@ -101,6 +131,21 @@ async function main(): Promise<void> {
       h('div', 'acts', mode),
     ]
     const acts = kids[2] as HTMLElement
+    if (off) {
+      const w = h('span', 'mode off', `⚠ ${T.lv.offline} ${new Date(off).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`)
+      w.setAttribute('role', 'alert')
+      acts.append(w)
+    }
+    const snd = mk(sound ? '🔔' : '🔕', () => {
+      sound = !sound
+      saveSound(sound)
+      if (sound) beep() // the click is the gesture the browser needs before it will play sound
+      say(sound ? T.lv.soundOn : T.lv.soundOff)
+      drawTop()
+    })
+    snd.title = sound ? T.lv.soundOn : T.lv.soundOff
+    snd.setAttribute('aria-pressed', String(sound))
+    acts.append(snd)
     if (api.surge) acts.append(mk('⚡ ' + T.surge, () => api.surge?.()))
     if (boot.cfg && isDemo) acts.append(mk('🔑 ' + T.login, () => (location.href = location.pathname)))
     acts.append(mk('📊 ' + T.report, openReport))
@@ -256,6 +301,7 @@ async function main(): Promise<void> {
     }
     const had = document.activeElement === qin
     qin.placeholder = T.find
+    qin.title = T.lv.keys
     for (const [m, b] of tabs) b.textContent = { all: T.fAll, late: T.fLate, free: T.fFree }[m]
     put(left, h('h2', '', T.queue), attn(iss), qbar, list, als.length ? h('h2', '', T.alerts) : null, als.length ? gl : null)
     list.scrollTop = keep
@@ -584,6 +630,7 @@ async function main(): Promise<void> {
 
   function setLang(l: Lang): void {
     lang = l
+    saveLang(l)
     T = dict(l)
     document.documentElement.lang = l
     drawTop()
@@ -606,7 +653,15 @@ async function main(): Promise<void> {
         location.reload()
         return
       }
+      drawTop() // shows how old the data on screen is
       return say(T.err, true)
+    }
+    lastOk = Date.now()
+    const fresh = newUrgent(hot, incs)
+    for (const i of fresh) hot.add(i.id)
+    if (fresh.length && !first) {
+      say(`🚨 ${T.lv.newUrgent}: ${fresh.map((i) => `${i.place} (${i.score})`).join(', ')}`, true)
+      if (sound) beep()
     }
     for (const a of als) {
       if (!seen.has(a.id)) {
@@ -643,6 +698,26 @@ async function main(): Promise<void> {
   setLang(lang)
   await refresh()
   setInterval(refresh, isDemo ? 2000 : 5000)
+
+  // Keyboard: the control room works fast and often with one hand on the mouse.
+  document.addEventListener('keydown', (e) => {
+    const t = e.target as HTMLElement | null
+    if (e.ctrlKey || e.metaKey || e.altKey) return
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return
+    if (document.querySelector('[role="dialog"]')) return // a dialog owns the keys while it is open
+    if (e.key === '/') {
+      e.preventDefault()
+      qin.focus()
+    } else if (e.key === 'j' || e.key === 'k') {
+      const ids = filt(incs, qtxt, mode, Date.now()).map((i) => i.id)
+      const nx = step(ids, sel, e.key === 'j' ? 1 : -1)
+      if (nx) pickInc(nx)
+    } else if (e.key === 'Escape' && sel) {
+      sel = ''
+      drawRight()
+      drawQueue()
+    }
+  })
 
   // ---------------------------------------------------------------- login screen
   function login(cfg: Cfg, done: () => void): void {
