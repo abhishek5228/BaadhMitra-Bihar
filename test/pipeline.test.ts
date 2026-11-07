@@ -5,6 +5,7 @@ const db = new Map<string, Record<string, unknown>>()
 const sent: string[] = []
 const pub: string[] = []
 const subs: string[] = []
+const flaky = { sns: false }
 
 // Mock at the SDK client level (not the helper module) so helpers inside backend/lib/aws.ts
 // such as getInc, putInc and bump also hit the fake.
@@ -54,6 +55,7 @@ const fake = {
       return {}
     }
     if (n === 'PublishCommand') {
+      if (flaky.sns) throw Object.assign(new Error('sns down'), { name: 'ServiceUnavailable' })
       pub.push(i.Message)
       return {}
     }
@@ -101,6 +103,7 @@ beforeEach(() => {
   sent.length = 0
   pub.length = 0
   subs.length = 0
+  flaky.sns = false
 })
 
 describe('text report -> queue -> extractor -> dispatcher API', async () => {
@@ -344,6 +347,46 @@ describe('text report -> queue -> extractor -> dispatcher API', async () => {
     } finally {
       Date.now = realNow
     }
+  })
+
+  it('an overdue notice that could not be sent is retried on the next sweep, not forgotten', async () => {
+    const id = await seed()
+    const sweep = (await import('../backend/sla')).handler
+    const old = (db.get('I#' + id + '|M')!.inc as any).opn ?? (db.get('I#' + id + '|M')!.inc as any).first
+    const realNow = Date.now
+    try {
+      Date.now = () => old + 61 * 60_000
+      flaky.sns = true
+      await sweep()
+      expect(pub.filter((m) => m.startsWith('Overdue'))).toHaveLength(0)
+      expect((db.get('I#' + id + '|M')!.inc as any).esc ?? 0).toBe(0) // not marked as announced
+      flaky.sns = false
+      await sweep()
+      expect(pub.filter((m) => m.startsWith('Overdue'))).toHaveLength(1)
+      await sweep()
+      expect(pub.filter((m) => m.startsWith('Overdue'))).toHaveLength(1)
+    } finally {
+      Date.now = realNow
+    }
+  })
+
+  it('one unreadable queue message fails alone: the others in the batch are still processed', async () => {
+    await ing(ev('/reports', 'POST', { text: 'Kursela me paani chhat par, 6 log, naav chahiye', sender: 'b1' }))
+    const good = sent.splice(0)[0]
+    const res = await ext({ Records: [{ messageId: 'bad', body: '{not json' }, { messageId: 'ok', body: good }] } as any)
+    expect(res.batchItemFailures).toEqual([{ itemIdentifier: 'bad' }])
+    expect(JSON.parse((await api(ev('/incidents', 'GET'))).body).items).toHaveLength(1)
+  })
+
+  it('lists gauges, and alerts with a short-lived link to the Hindi voice file when there is one', async () => {
+    db.set('G#a|L', { pk: 'G#a', sk: 'L', g1p: 'GAUGE', g1s: 'a', g: { id: 'a', name: 'Hajipur' } })
+    db.set('A#x|M', { pk: 'A#x', sk: 'M', g1p: 'ALERT', g1s: '000000000002', a: { id: 'x', name: 'Hajipur', en: 'e', hi: 'h' }, akey: 'alerts/x.mp3' })
+    db.set('A#y|M', { pk: 'A#y', sk: 'M', g1p: 'ALERT', g1s: '000000000001', a: { id: 'y', name: 'Basua', en: 'e', hi: 'h' } })
+    expect(JSON.parse((await api(ev('/gauges', 'GET'))).body).items).toEqual([{ id: 'a', name: 'Hajipur' }])
+    const al = JSON.parse((await api(ev('/alerts', 'GET'))).body).items
+    expect(al.map((x: { id: string }) => x.id)).toEqual(['x', 'y']) // newest first
+    expect(al[0].audio).toBe('https://signed.test/alerts/x.mp3')
+    expect(al[1].audio).toBeUndefined()
   })
 
   it('records dispatcher feedback and reports response times and agreement', async () => {
