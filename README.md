@@ -8,7 +8,7 @@
 Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicated rescue queue on a live 3D map. Rescue crews get their own phone page, and nothing waits unnoticed.
 
 [![CI](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml/badge.svg)](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml)
-![tests](https://img.shields.io/badge/tests-121%20passing-2fbf71)
+![tests](https://img.shields.io/badge/tests-128%20passing-2fbf71)
 ![AWS](https://img.shields.io/badge/AWS-Lambda%20%C2%B7%20SQS%20%C2%B7%20DynamoDB%20%C2%B7%20Bedrock%20%C2%B7%20Cognito-ff9900)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![three.js](https://img.shields.io/badge/3D-three.js-black)
@@ -160,6 +160,10 @@ The gauge poller compares levels with the danger mark, voices a Hindi alert with
 
 After handling an incident a dispatcher can mark it right or wrong (and which field was wrong). The report page shows time to assign, time to resolve, who closed it and the agreement rate. That is how real accuracy gets measured in a pilot, instead of guessed.
 
+### 10. The dashboard says what needs a human right now
+
+Above the queue, a "Needs attention" list is recomputed on every refresh from data the system already has: incidents unassigned or silent past their limit, open incidents while no crew has shared a recent position, rivers that a straight-line estimate puts at their danger mark within six hours, reports without a place, reports needing a human look, and stale gauge readings. Red means act now, yellow means look. Each item that points at an incident opens it. It fixes nothing by itself and invents nothing; the thresholds are starting values to agree with the control room.
+
 ## Under the hood, with graphs
 
 ### Priority score
@@ -236,10 +240,10 @@ flowchart LR
 
 ## Tests and evaluation
 
-<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 121 passing tests by area" width="70%"/></p>
+<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 128 passing tests by area" width="70%"/></p>
 
 ```bash
-npm run typecheck && npm test      # 121 tests: core logic, the Lambda pipeline against a fake AWS, roles and audit, WhatsApp signatures, feeds, offline queue, CDK guarantees, accuracy kit
+npm run typecheck && npm test      # 128 tests: core logic, the Lambda pipeline against a fake AWS, roles and audit, WhatsApp signatures, feeds, offline queue, CDK guarantees, accuracy kit
 npm run eval                       # extractor benchmark (add LLM=1 MODEL=<id> to score Bedrock)
 npx cdk synth                      # validates the CloudFormation template
 npm run loadtest -- <api> 200 20 --yes   # load test the public endpoint (use a staging stack)
@@ -257,7 +261,7 @@ npm run docs:data && npm run docs:graphs # regenerate the numbers and graphs in 
 | Dashboard and phone helpers (`filter`, `csv`, `queue`, `pingrule`, `mfa`, `villages-import`, `logic`) | 35 | queue search, CSV export, single-flight outbox, crew pings, two-step enrolment, village import, crew suggestions and time-to-danger |
 | Accuracy kit and feed adapter (`kit.test.ts`) | 12 | CSV parsing, label normalisation, confidence intervals, labeler agreement, foreign gauge feeds mapped without inventing values |
 
-On top of these, `npm run e2e` runs 10 Playwright browser tests against the built site in demo mode (ranked queue, search and filters, crew suggestions, dialogs, surge, and the citizen page keeping a report offline and sending it when the network returns, and saying so when it is rate-limited). They run in CI and need no AWS.
+On top of these, `npm run e2e` runs 11 Playwright browser tests against the built site in demo mode (ranked queue, search and filters, crew suggestions, dialogs, surge, and the citizen page keeping a report offline and sending it when the network returns, and saying so when it is rate-limited). They run in CI and need no AWS.
 
 What the tests do **not** cover: a live AWS account, real WhatsApp traffic, real phones' GPS, or any real flood message. The pipeline tests run on fakes.
 
