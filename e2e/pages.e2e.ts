@@ -169,6 +169,23 @@ test.describe('citizen report page', () => {
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('bmoutbox') ?? '[]').length)).toBe(0)
   })
 
+  test('a half-written report survives a reload, and is gone once it has been sent', async ({ page }) => {
+    const { sent } = await stub(page)
+    await page.goto('/report.html')
+    await page.fill('textarea', 'Rampur gaon me paani ghar me ghus gaya')
+    await page.getByRole('button', { name: 'नाव' }).click()
+    // the page's offline cache would answer config.json before this test's stub can, so step it aside
+    await page.evaluate(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister() })
+    await page.goto('/report.html') // a fresh load, as after a reload or a restarted browser
+    await expect(page.locator('textarea')).toHaveValue('Rampur gaon me paani ghar me ghus gaya')
+    await expect(page.getByRole('button', { name: 'नाव' })).toHaveAttribute('aria-pressed', 'true')
+    await page.getByRole('button', { name: /Send/ }).click()
+    await expect.poll(() => sent.length, { timeout: 10_000 }).toBeGreaterThan(0) // the restored words are what gets sent
+    expect(sent[0]).toContain('Rampur gaon')
+    await page.reload()
+    await expect(page.locator('textarea')).toHaveValue('')
+  })
+
   test('too little text is refused and nothing is queued', async ({ page }) => {
     await stub(page)
     await page.goto('/report.html')
