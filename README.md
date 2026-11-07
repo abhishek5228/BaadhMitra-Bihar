@@ -19,11 +19,11 @@ Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicat
 
 </div>
 
-> **Status:** working prototype, deployed by its author to a personal AWS account for testing. It has **not** been used in a real flood, no agency has endorsed it, and extraction accuracy on real messages is unmeasured. River levels are simulated (and labelled `sim`) until an official feed is connected. The path to a real pilot is in [`docs/PILOT.md`](docs/PILOT.md).
+> **Where it stands:** a complete, working prototype running on the author's own AWS account, built to go into a one-district shadow pilot. It has not yet been used in a real flood and no agency has endorsed it; extraction accuracy on real messages is what the pilot measures, and river levels are simulated (labelled `sim`) until an official feed is connected. The road to a pilot is in [`docs/PILOT.md`](docs/PILOT.md), and the full picture is [at the end of this page](#where-it-stands-and-where-a-pilot-takes-it).
 
 ## Contents
 
-[The problem](#the-problem) · [See it](#see-it) · [How one message travels](#how-one-message-travels) · [Use cases](#use-cases) · [Shift handover](#12-the-next-shift-gets-a-sheet-of-paper) · [Under the hood, with graphs](#under-the-hood-with-graphs) · [Roles](#who-can-do-what) · [Architecture](#architecture) · [Design decisions](#design-decisions-worth-knowing) · [Tests](#tests-and-evaluation) · [Run and deploy](#run-the-dashboard-locally-no-aws-needed) · [API](#api) · [Docs](#docs-for-a-real-pilot) · [Limits](#known-limits-and-next-steps)
+[The problem](#the-problem) · [See it](#see-it) · [How one message travels](#how-one-message-travels) · [Use cases](#use-cases) · [Shift handover](#12-the-next-shift-gets-a-sheet-of-paper) · [Under the hood, with graphs](#under-the-hood-with-graphs) · [Roles](#who-can-do-what) · [Architecture](#architecture) · [Design decisions](#design-decisions-worth-knowing) · [Tests](#tests-and-evaluation) · [Run and deploy](#run-the-dashboard-locally-no-aws-needed) · [API](#api) · [Docs](#docs-for-a-real-pilot) · [Where it stands](#where-it-stands-and-where-a-pilot-takes-it)
 
 ---
 
@@ -387,15 +387,41 @@ If Bedrock access or the model id is wrong, the system keeps working on the rule
 | `POST /field/ping`, `GET /field/mine`, `POST /field/{id}/progress` | Cognito, `field_team` only | the crew's own phone |
 | `POST /admin/replay`, `GET /audit`, `GET /feedback` | Cognito, `district_officer` | redrive the dead-letter queue, activity log, labelled-feedback export |
 
-## Known limits and next steps
+## Where it stands, and where a pilot takes it
 
-- Transcribe has no Maithili or Bhojpuri model, so Hindi is used; confidence drops on heavy dialect and the review queue catches it. The Bhojpuri/Maithili word list is best effort and needs native-speaker review.
-- WhatsApp needs a Meta business account and approval; the webhook is built and tested but has not talked to the real Meta service.
-- River data is simulated until you configure an official feed (and get permission for it). A single API-key header is supported; OAuth or signed requests are not. Village-level placement needs a licensed village dataset (`npm run villages`); the shipped index is empty.
-- Two-step sign-in can be enrolled from the dashboard but is not mandatory and is untested on a live pool; CORS is open by default for demo convenience (`-c corsOrigin=...` restricts it); no independent penetration test. See `docs/SECURITY.md` for the full list.
-- SMS delivery in India requires DLT registration with SNS; email alerts work immediately.
-- The benchmark set is author-written; real accuracy is measured in a pilot (`docs/PILOT.md`).
-- Crew location is only as good as the phone and the crew's choice to share it. The battery-saving ping rule (about every 25 s when moving, every 3 min when still) has not been tried on real phones. The overdue thresholds (15/30 and 30/60 minutes, 60/120 for a silent crew) are starting values to agree with the control room, not standards.
-- The conveniences (new-job vibration and wake lock on the crew page, the beep, the print layout of the handover sheet) are tested in code and in a desktop browser, not yet on real phones or a real printer. The Hindi wording has not been reviewed by a native speaker.
-- The attention panel, the handover sheet and the other conveniences show on a deployed site only after it is redeployed (`npm run deploy`).
-- Next: resource-aware team suggestions, IVR / missed-call intake, district-boundary heatmap, a list screen for unplaced reports.
+BaadhMitra is a working prototype, deployed end to end on AWS and exercised by 229 unit tests and 20 browser tests. This section is the map for judges and for a first district: what is already proven, what needs a partner to prove, and what comes next.
+
+### Proven in the build
+
+- **The whole pipeline runs:** message, redaction, queue, extraction, merge, score, dashboard, dispatch, crew phone, overdue clock, alert. The pipeline tests run it on a fake AWS; the deployed stack runs it for real.
+- **It degrades instead of failing:** Bedrock down means the rule extractor takes over; a network drop means the phone pages queue their taps; a stale river feed is greyed out and raises no alert.
+- **People stay in charge:** the system ranks and recommends, a dispatcher assigns, every action is audited, and a "needs attention" panel and a printable handover sheet keep the control room and the next shift oriented.
+
+### What a pilot unlocks
+
+Each item below has its tooling built; the missing piece is a partner, not code.
+
+| Next proof | What is ready | What it needs from a partner |
+| --- | --- | --- |
+| **Accuracy on real messages** | the labeling page, protocol and scorer (`npm run eval:ind`) with confidence intervals | 100+ messages written and labelled by people who did not build the extractor |
+| **Real river levels** | a config-driven feed adapter and `npm run feed:check` | an official gauge feed (CWC or the state water resources department), agreed with the agency |
+| **WhatsApp intake at scale** | a signed, tested webhook | a Meta business account and approval |
+| **Village-level placement** | `npm run villages` importer | a licensed village dataset (the shipped index is empty on purpose) |
+| **SMS alerts in India** | SNS wiring | DLT registration; email alerts work today |
+| **Dialect coverage** | a Bhojpuri and Maithili word list, with unplaced reports sent to a human | native-speaker review; Transcribe has no Maithili or Bhojpuri model, so Hindi is used for voice |
+| **Crew tracking on real phones** | a battery-aware ping rule (about every 25 s moving, 3 min still), new-job vibration, wake lock | field trials on real handsets and real connectivity |
+| **Hardening** | roles enforced on every call, audit log, optional two-step sign-in, WAF switch, `docs/SECURITY.md` | mandatory two-step sign-in, a locked CORS origin (`-c corsOrigin=...`), an independent penetration test |
+
+The overdue thresholds (15/30 and 30/60 minutes, 60/120 for a silent crew) and the 75-point urgent line are starting values to agree with a control room, not official standards. The extraction benchmark in `eval/` is a regression guard written by the author, not an accuracy claim; real accuracy is what the pilot measures.
+
+### Shipping a new version
+
+The dashboard, the crew page and the citizen page are static files on CloudFront, so a release is one command, `npm run deploy` (build the site, then `cdk deploy`). It needs only an AWS account and the CDK; nothing else changes on the stack. `npx cdk destroy` removes everything (the DynamoDB table is retained by design).
+
+### Roadmap
+
+1. A first one-district shadow pilot following [`docs/PILOT.md`](docs/PILOT.md): run beside the real control room, change nothing for them, measure time to assign and agreement with dispatchers.
+2. Resource-aware team suggestions (boat capacity, fuel, hours on duty).
+3. IVR and missed-call intake for people with no data connection.
+4. District-boundary heatmap of reports and response times.
+5. A list screen for unplaced reports so a human can place them in one tap.
