@@ -32,3 +32,32 @@ fn matches_typescript() {
     }
     assert!(n >= 120);
 }
+
+#[test]
+fn geohash_matches_typescript() {
+    let text = std::fs::read_to_string("../conformance/vectors.tsv").unwrap();
+    let mut n = 0;
+    for line in text.lines().filter(|l| l.starts_with("geo\t")) {
+        let c: Vec<&str> = line.split('\t').collect();
+        let h = baadhmitra_dispatch::geohash(c[1].parse().unwrap(), c[2].parse().unwrap(), c[3].parse().unwrap());
+        assert_eq!(h, c[4], "{line}");
+        let (la, lo) = baadhmitra_dispatch::centre(&h);
+        assert_eq!((la, lo), (c[5].parse().unwrap(), c[6].parse().unwrap()), "{line}");
+        n += 1;
+    }
+    assert!(n >= 300);
+}
+
+#[test]
+fn percentile_matches_typescript() {
+    let text = std::fs::read_to_string("../conformance/vectors.tsv").unwrap();
+    let mut n = 0;
+    for line in text.lines().filter(|l| l.starts_with("pct\t")) {
+        let c: Vec<&str> = line.split('\t').collect();
+        let a: Vec<f64> = if c[2] == "-" { vec![] } else { c[2].split(',').map(|x| x.parse().unwrap()).collect() };
+        let want: Option<f64> = if c[3] == "-" { None } else { Some(c[3].parse().unwrap()) };
+        assert_eq!(baadhmitra_dispatch::percentile(&a, c[1].parse().unwrap()), want, "{line}");
+        n += 1;
+    }
+    assert!(n >= 150);
+}
