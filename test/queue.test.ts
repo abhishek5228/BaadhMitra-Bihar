@@ -10,13 +10,26 @@ describe('offline outbox', () => {
   it('keeps a report when sending fails and counts the try', async () => {
     add('Rampur me paani')
     const r = await flush(async () => Promise.reject(new Error('offline')))
-    expect(r).toEqual({ sent: 0, left: 1 })
+    expect(r).toEqual({ sent: 0, left: 1, failed: 0 })
     expect(read()[0].tries).toBe(1)
+  })
+  it('drops a report the server refuses for good, and carries on with the next', async () => {
+    add('refused')
+    add('fine')
+    const send = vi.fn(async (i: { text: string }) => {
+      if (i.text === 'refused') throw Object.assign(new Error('400'), { status: 400 })
+    })
+    expect(await flush(send)).toEqual({ sent: 1, left: 0, failed: 1 })
+  })
+  it('keeps a report the server only asked to slow down for (429) or that hit a server error', async () => {
+    add('later')
+    expect(await flush(async () => Promise.reject(Object.assign(new Error('429'), { status: 429 })))).toEqual({ sent: 0, left: 1, failed: 0 })
+    expect(await flush(async () => Promise.reject(Object.assign(new Error('503'), { status: 503 })))).toEqual({ sent: 0, left: 1, failed: 0 })
   })
   it('removes a report once it is sent', async () => {
     add('one')
     add('two')
-    expect(await flush(async () => undefined)).toEqual({ sent: 2, left: 0 })
+    expect(await flush(async () => undefined)).toEqual({ sent: 2, left: 0, failed: 0 })
   })
   it('never sends the same report twice when flushes overlap', async () => {
     add('only once')

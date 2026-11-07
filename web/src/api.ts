@@ -135,7 +135,7 @@ export function citizen(base: string): { report(text: string, pin?: Pin): Promis
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ text, sender: me(), ...(pin ? { lat: pin.lat, lon: pin.lon } : {}) }),
       })
-      if (!r.ok && r.status !== 200) throw new Error(String(r.status))
+      if (!r.ok) throw Object.assign(new Error(String(r.status)), { status: r.status })
     },
   }
 }

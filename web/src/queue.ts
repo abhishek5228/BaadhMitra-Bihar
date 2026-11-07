@@ -38,9 +38,20 @@ export function add(text: string, pin?: Pin, now = Date.now()): Item {
  * Try to send everything waiting. `send` rejects when offline or the server fails; the item then stays.
  * Returns how many were delivered and how many are still waiting.
  */
-let busy: Promise<{ sent: number; left: number }> | null = null
+export interface Flushed {
+  sent: number
+  left: number
+  failed: number // refused for good by the server (bad request): removed, because retrying cannot help
+}
+let busy: Promise<Flushed> | null = null
 
-export function flush(send: (i: Item) => Promise<void>): Promise<{ sent: number; left: number }> {
+/** A 4xx other than "too early" and "slow down" will never succeed, so the item must not block the queue. */
+const final = (e: unknown): boolean => {
+  const c = (e as { status?: number }).status
+  return typeof c === 'number' && c >= 400 && c < 500 && c !== 408 && c !== 429
+}
+
+export function flush(send: (i: Item) => Promise<void>): Promise<Flushed> {
   // The timer, the "online" event and the send button can all call this at once. One run at a time,
   // otherwise the same report would be posted twice and counted as two reporters.
   busy ??= run(send).finally(() => {
@@ -49,17 +60,23 @@ export function flush(send: (i: Item) => Promise<void>): Promise<{ sent: number;
   return busy
 }
 
-async function run(send: (i: Item) => Promise<void>): Promise<{ sent: number; left: number }> {
+async function run(send: (i: Item) => Promise<void>): Promise<Flushed> {
   let sent = 0
+  let failed = 0
   for (const it of read()) {
     try {
       await send(it)
       write(read().filter((x) => x.id !== it.id))
       sent++
-    } catch {
+    } catch (e) {
+      if (final(e)) {
+        write(read().filter((x) => x.id !== it.id))
+        failed++
+        continue
+      }
       write(read().map((x) => (x.id === it.id ? { ...x, tries: x.tries + 1 } : x)))
       break // still offline: do not hammer the network with the rest
     }
   }
-  return { sent, left: read().length }
+  return { sent, left: read().length, failed }
 }
