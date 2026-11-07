@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const db = new Map<string, Record<string, unknown>>()
 const sent: string[] = []
 const pub: string[] = []
+const subs: string[] = []
 
 // Mock at the SDK client level (not the helper module) so helpers inside backend/lib/aws.ts
 // such as getInc, putInc and bump also hit the fake.
@@ -56,11 +57,17 @@ const fake = {
       pub.push(i.Message)
       return {}
     }
+    if (n === 'SubscribeCommand') {
+      subs.push(i.Endpoint)
+      return {}
+    }
+    if (n === 'StartMessageMoveTaskCommand') return { TaskHandle: 'task-1' }
     throw new Error('unhandled ' + n)
   },
 }
 
 vi.mock('@aws-sdk/lib-dynamodb', async () => ({ ...(await vi.importActual<object>('@aws-sdk/lib-dynamodb')), DynamoDBDocumentClient: { from: () => fake } }))
+vi.mock('@aws-sdk/s3-request-presigner', () => ({ getSignedUrl: async (_c: unknown, cmd: { input: { Key: string } }) => 'https://signed.test/' + cmd.input.Key }))
 vi.mock('@aws-sdk/client-sqs', async () => ({ ...(await vi.importActual<object>('@aws-sdk/client-sqs')), SQSClient: class { send = fake.send } }))
 vi.mock('@aws-sdk/client-sns', async () => ({ ...(await vi.importActual<object>('@aws-sdk/client-sns')), SNSClient: class { send = fake.send } }))
 
@@ -93,6 +100,7 @@ beforeEach(() => {
   db.clear()
   sent.length = 0
   pub.length = 0
+  subs.length = 0
 })
 
 describe('text report -> queue -> extractor -> dispatcher API', async () => {
@@ -182,6 +190,45 @@ describe('text report -> queue -> extractor -> dispatcher API', async () => {
     for (const u of ['a', 'b', 'c']) await ing(ev('/reports', 'POST', { text: t, sender: u }))
     await drain()
     expect(pub.filter((m) => m.includes('Khagaria')).length).toBe(1)
+  })
+
+  it('hands out a short-lived upload address for a voice note and a placeholder report', async () => {
+    const r = await ing(ev('/upload-url', 'POST', { ext: 'OGG', sender: 'v1' }))
+    expect(r.statusCode).toBe(201)
+    const out = JSON.parse(r.body)
+    expect(out.key).toMatch(/^audio\/.+\.ogg$/)
+    expect(out.url).toBe('https://signed.test/' + out.key)
+    expect(out.type).toMatch(/ogg/)
+    expect(db.get(`R#${out.id}|M`)).toMatchObject({ st: 'wait' })
+  })
+
+  it('rate-limits voice uploads the same way as text', async () => {
+    let last = 0
+    for (let k = 0; k < 32; k++) last = (await ing(ev('/upload-url', 'POST', { ext: 'ogg', sender: 'vspam' }))).statusCode
+    expect(last).toBe(429)
+  })
+
+  it('text outside the 3 to 1000 character range is refused', async () => {
+    expect((await ing(ev('/reports', 'POST', { text: 'x'.repeat(1001), sender: 'a' }))).statusCode).toBe(400)
+    expect((await ing(ev('/reports', 'POST', { text: '   ', sender: 'a' }))).statusCode).toBe(400)
+    expect((await ing(ev('/reports', 'POST', { text: 42, sender: 'a' }))).statusCode).toBe(400)
+    expect(sent.length).toBe(0)
+  })
+
+  it('subscribes a valid email to alerts and refuses a malformed one', async () => {
+    expect((await api(ev('/subscribe', 'POST', { email: ' ops@example.gov.in ' }, undefined, null))).statusCode).toBe(202)
+    expect(subs).toEqual(['ops@example.gov.in'])
+    for (const email of ['nope', 'a@b', 'a b@c.in', '', 7]) expect((await api(ev('/subscribe', 'POST', { email }, undefined, null))).statusCode).toBe(400)
+    expect(subs).toHaveLength(1)
+  })
+
+  it('only an officer can replay the dead-letter queue, and the replay is audited', async () => {
+    expect((await api(ev('/admin/replay', 'POST', {}, undefined, 'control_room'))).statusCode).toBe(403)
+    const r = await api(ev('/admin/replay', 'POST', {}, undefined, 'district_officer'))
+    expect(r.statusCode).toBe(202)
+    expect(JSON.parse(r.body).task).toBe('task-1')
+    const log = JSON.parse((await api(ev('/audit', 'GET'))).body).items
+    expect(log.some((x: { action: string }) => x.action === 'replay')).toBe(true)
   })
 
   it('rejects bad input', async () => {
