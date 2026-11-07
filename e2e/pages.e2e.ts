@@ -87,6 +87,19 @@ test.describe('staff dashboard (demo mode)', () => {
     await expect(box).toContainText('ध्यान चाहिए')
   })
 
+  test('an incident can be shared with a crew: map, copy, and WhatsApp with the brief', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    await page.locator('.row').first().click()
+    const shr = page.locator('.shr')
+    await expect(shr.locator('a[href^="https://www.google.com/maps/search/"]')).toBeVisible()
+    const wa = await shr.locator('a[href^="https://wa.me/"]').getAttribute('href')
+    expect(decodeURIComponent(wa ?? '')).toContain('maps/search')
+    await shr.getByRole('button', { name: /Copy brief|कॉपी/ }).click()
+    const clip = await page.evaluate(() => navigator.clipboard.readText())
+    expect(clip).toMatch(/Rescue: .+priority \d+\/100/)
+    expect(clip).toContain('google.com/maps')
+  })
+
   test('the monsoon surge brings in new incidents', async ({ page }) => {
     const before = await page.locator('.row').count()
     await page.getByRole('button', { name: /surge/i }).click()
