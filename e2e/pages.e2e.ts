@@ -199,3 +199,46 @@ test.describe('citizen report page', () => {
     await expect(page.locator('a.tel')).toHaveAttribute('href', 'tel:112')
   })
 })
+
+test.describe('rescue crew page', () => {
+  const job = (id: string, place: string, extra: Record<string, unknown> = {}) => ({ id, place, lat: 25.6, lon: 85.1, n: 1, raw: 1, sev: 4, ppl: 6, vul: false, needs: ['boat'], conf: 1, review: false, first: Date.now() - 600_000, last: Date.now(), status: 'assigned', score: 70, snips: [], who: [], ver: 1, team: 'NDRF Team A', ...extra })
+
+  async function crew(page: Page): Promise<{ jobs: unknown[] }> {
+    const state = { jobs: [] as unknown[] }
+    await page.addInitScript(() => {
+      sessionStorage.setItem('bmsess', JSON.stringify({ id: 'tok', refresh: '', exp: Date.now() + 3600_000, email: 'crew@example.gov.in', roles: ['field_team'] }))
+      ;(window as unknown as { vibes: number[][] }).vibes = []
+      navigator.vibrate = (p: VibratePattern) => ((window as unknown as { vibes: unknown[] }).vibes.push(p as number[]), true)
+    })
+    await page.route('**/config.json', (r) => r.fulfill({ json: { api: API, region: 'ap-southeast-2', clientId: 'c' } }))
+    await page.route('https://api.test.invalid/**', (r) => r.fulfill({ json: { team: 'NDRF Team A', items: state.jobs } }))
+    return state
+  }
+
+  test('shows when each job was assigned, and announces a new job with a banner, vibration and tab title', async ({ page }) => {
+    const st = await crew(page)
+    st.jobs = [job('a', 'Supaul', { asg: Date.now() - 12 * 60_000 })]
+    await page.goto('/field.html')
+    await expect(page.locator('.job h2')).toHaveText('Supaul')
+    await expect(page.locator('.job .meta')).toContainText(/12 मिनट पहले|12 min ago/)
+    await expect(page).toHaveTitle(/^\(1\) /)
+    await expect(page.locator('.fresh')).toHaveCount(0) // the first load is not "new"
+    st.jobs = [...st.jobs, job('b', 'Kursela')]
+    await page.evaluate(() => window.dispatchEvent(new Event('online')))
+    await expect(page.locator('.fresh')).toContainText('Kursela')
+    await expect(page).toHaveTitle(/^\(2\) /)
+    expect(await page.evaluate(() => (window as unknown as { vibes: unknown[] }).vibes.length)).toBe(1)
+  })
+
+  test('the language choice is remembered', async ({ page }) => {
+    const st = await crew(page)
+    st.jobs = [job('a', 'Supaul')]
+    await page.goto('/field.html')
+    const before = await page.locator('html').getAttribute('lang')
+    const other = before === 'hi' ? 'en' : 'hi'
+    await page.getByRole('button', { name: other === 'hi' ? 'हिं' : 'EN' }).click()
+    await expect(page.locator('html')).toHaveAttribute('lang', other)
+    await page.goto('/field.html')
+    await expect(page.locator('html')).toHaveAttribute('lang', other)
+  })
+})
