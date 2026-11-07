@@ -2,7 +2,7 @@ import json
 import pathlib
 import unittest
 
-from baadhmitra import hours_to_danger, score, sla, suggest
+from baadhmitra import centre, geohash, hours_to_danger, percentile, score, sla, suggest
 
 V = json.loads((pathlib.Path(__file__).resolve().parents[2] / "conformance" / "vectors.json").read_text())
 
@@ -27,6 +27,16 @@ class Vectors(unittest.TestCase):
         for c in V["suggest"]:
             i = c["in"]
             self.assertEqual(suggest(i["inc"]["lat"], i["inc"]["lon"], i["teams"], c["now"], i["max"]), c["out"], c)
+
+    def test_geohash(self):
+        for c in V["geo"]:
+            i, o = c["in"], c["out"]
+            h = geohash(i["lat"], i["lon"], i["prec"])
+            self.assertEqual((h, *centre(h)), (o["hash"], o["lat"], o["lon"]), c)
+
+    def test_percentile(self):
+        for c in V["pct"]:
+            self.assertEqual(percentile(c["in"]["a"], c["in"]["p"]), c["out"], c)
 
 
 if __name__ == "__main__":
