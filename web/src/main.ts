@@ -16,6 +16,7 @@ import type { Cfg } from './auth'
 import { showLogin } from './login'
 import { dict, type Lang } from './i18n'
 import { World, urg } from './scene'
+import { sheet, sheetEl, type Labels } from './handover'
 
 // Tiny DOM helper. Everything user-supplied goes through textContent, never innerHTML.
 type K = string | Node | null | undefined | false
@@ -149,6 +150,7 @@ async function main(): Promise<void> {
     if (api.surge) acts.append(mk('⚡ ' + T.surge, () => api.surge?.()))
     if (boot.cfg && isDemo) acts.append(mk('🔑 ' + T.login, () => (location.href = location.pathname)))
     acts.append(mk('📊 ' + T.report, openReport))
+    acts.append(mk('🖨 ' + T.hv.btn, openHandover))
     if (can('admin')) acts.append(mk('🧾 ' + T.audit, openAudit))
     if (api.mfa) acts.append(mk('🔐 ' + T.mfa, openMfa))
     if (api.who) acts.append(h('span', 'who', api.who + (api.roles.length ? '' : ' ⚠')))
@@ -218,6 +220,18 @@ async function main(): Promise<void> {
     } catch {
       say(T.err, true)
     }
+  }
+
+  function openHandover(): void {
+    const box = h('div', 'modal hv')
+    const x = h('button', 'btn ghost close noprint', '✕')
+    x.onclick = () => box.remove()
+    const go = h('button', 'btn noprint', '🖨 ' + T.hv.print)
+    go.onclick = () => window.print()
+    const L: Labels = { ...T.hv, need: T.need }
+    box.append(h('div', 'card', h('div', 'noprint hvb', go, x), sheetEl(sheet(incs, tms, gs, Date.now()), L, api.who)))
+    app.append(box)
+    wire(box, x)
   }
 
   async function openAudit(): Promise<void> {
