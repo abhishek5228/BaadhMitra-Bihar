@@ -191,6 +191,19 @@ describe('text report -> queue -> extractor -> dispatcher API', async () => {
     expect((await api(ev('/nope', 'GET'))).statusCode).toBe(404)
   })
 
+  it('assign needs a team name, trims a long one, and refuses an unknown incident', async () => {
+    await ing(ev('/reports', 'POST', { text: 'Khagaria: 25 log phanse hain, paani gardan tak, boat urgently', sender: 'k9' }))
+    await drain()
+    const a = JSON.parse((await api(ev('/incidents', 'GET'))).body).items[0]
+    const p = { id: a.id }
+    expect((await api(ev('/incidents/{id}/assign', 'POST', {}, p))).statusCode).toBe(400)
+    expect((await api(ev('/incidents/{id}/assign', 'POST', { team: '   ' }, p))).statusCode).toBe(400)
+    expect((await api(ev('/incidents/{id}/assign', 'POST', { team: 12 }, p))).statusCode).toBe(400)
+    const long = JSON.parse((await api(ev('/incidents/{id}/assign', 'POST', { team: 'N'.repeat(100) }, p))).body)
+    expect(long.team).toHaveLength(40)
+    expect((await api(ev('/incidents/{id}/assign', 'POST', { team: 'T' }, { id: 'zzzzz' }))).statusCode).toBeGreaterThanOrEqual(400)
+  })
+
   it('enforces roles and writes an audit trail', async () => {
     await ing(ev('/reports', 'POST', { text: 'Kursela me paani chhat par, 6 log, naav chahiye', sender: 'u1' }))
     await drain()
