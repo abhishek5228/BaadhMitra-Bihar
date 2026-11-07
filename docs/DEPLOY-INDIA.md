@@ -81,9 +81,10 @@ The shipped gazetteer knows district headquarters and well-known flood towns. Fo
    ```
    [out:json][timeout:300];
    area["ISO3166-2"="IN-BR"]->.a;
-   node(area.a)["place"~"^(village|hamlet)$"];
-   out;
+   nwr(area.a)["place"~"^(village|hamlet)$"];
+   out center;
    ```
+   (`nwr` and `out center` also catch villages mapped as areas, not only points.)
 2. In the repo: `npm run villages -- path\to\export.json` (or a CSV with columns `name,hi,lat,lon`).
 3. `npm run web:build` and `npx cdk deploy`.
 

@@ -7,6 +7,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { NEEDS, type Need, type Rep } from '../shared/types'
 import { check, pick, prompt, rulex, SYS } from '../shared/extract'
 import { locate } from '../shared/gazetteer'
+import { parseCsv } from '../shared/csvp'
 
 export interface Lab {
   id: string
@@ -21,29 +22,7 @@ export interface Lab {
   who: string
 }
 
-export function parseCsv(txt: string): string[][] {
-  const out: string[][] = []
-  let row: string[] = [], c = '', q = false
-  const s = txt.replace(/^﻿/, '')
-  for (let k = 0; k < s.length; k++) {
-    const ch = s[k]
-    if (q) {
-      if (ch === '"') {
-        if (s[k + 1] === '"') { c += '"'; k++ } else q = false
-      } else c += ch
-    } else if (ch === '"') q = true
-    else if (ch === ',') { row.push(c); c = '' }
-    else if (ch === '\n' || ch === '\r') {
-      if (ch === '\r' && s[k + 1] === '\n') k++
-      row.push(c); c = ''
-      if (row.some((x) => x !== '')) out.push(row)
-      row = []
-    } else c += ch
-  }
-  row.push(c)
-  if (row.some((x) => x !== '')) out.push(row)
-  return out
-}
+export { parseCsv }
 
 const num = (v: string | undefined): number | null => {
   const x = (v ?? '').trim()
