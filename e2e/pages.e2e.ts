@@ -84,6 +84,21 @@ test.describe('citizen report page', () => {
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('bmoutbox') ?? '[]').length), { timeout: 20_000 }).toBe(0)
   })
 
+  test('a rate-limited send says so, keeps the report, and a refused one is dropped', async ({ page }) => {
+    let code = 429
+    await page.route('**/config.json', (r) => r.fulfill({ json: { api: API, region: 'ap-southeast-2', clientId: 'c' } }))
+    await page.route('https://api.test.invalid/**', (r) => r.fulfill({ status: code, json: { error: 'x' } }))
+    await page.goto('/report.html')
+    await page.fill('textarea', 'Rampur gaon me paani ghar me ghus gaya, 8 log')
+    await page.getByRole('button', { name: /Send/ }).click()
+    await expect(page.locator('.st')).toContainText('बहुत सूचनाएँ')
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('bmoutbox') ?? '[]').length)).toBe(1)
+    code = 400
+    await page.getByRole('button', { name: /Send/ }).click()
+    await expect(page.locator('.st')).toContainText('स्वीकार नहीं हुई')
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('bmoutbox') ?? '[]').length)).toBe(0)
+  })
+
   test('too little text is refused and nothing is queued', async ({ page }) => {
     await stub(page)
     await page.goto('/report.html')
