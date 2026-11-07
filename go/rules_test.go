@@ -40,6 +40,36 @@ func TestVectors(t *testing.T) {
 				t.Errorf("sla %v: got %+v", c, got)
 			}
 			n++
+		case "geo":
+			la, _ := strconv.ParseFloat(c[1], 64)
+			lo, _ := strconv.ParseFloat(c[2], 64)
+			pr, _ := strconv.Atoi(c[3])
+			h := Geohash(la, lo, pr)
+			cl, cn := Centre(h)
+			wl, _ := strconv.ParseFloat(c[5], 64)
+			wn, _ := strconv.ParseFloat(c[6], 64)
+			if h != c[4] || cl != wl || cn != wn {
+				t.Errorf("geo %v: got %s %v %v", c, h, cl, cn)
+			}
+			n++
+		case "pct":
+			p, _ := strconv.ParseFloat(c[1], 64)
+			var a []float64
+			if c[2] != "-" {
+				for _, x := range strings.Split(c[2], ",") {
+					v, _ := strconv.ParseFloat(x, 64)
+					a = append(a, v)
+				}
+			}
+			v, ok := Percentile(a, p)
+			if c[3] == "-" {
+				if ok {
+					t.Errorf("pct %v: got %v, want none", c, v)
+				}
+			} else if w, _ := strconv.ParseFloat(c[3], 64); !ok || v != w {
+				t.Errorf("pct %v: got %v", c, v)
+			}
+			n++
 		case "trend":
 			l, _ := strconv.ParseFloat(c[1], 64)
 			d, _ := strconv.ParseFloat(c[2], 64)
@@ -55,7 +85,7 @@ func TestVectors(t *testing.T) {
 			n++
 		}
 	}
-	if n < 900 {
-		t.Fatalf("expected at least 900 vectors, saw %d", n)
+	if n < 1300 {
+		t.Fatalf("expected at least 1300 vectors, saw %d", n)
 	}
 }
