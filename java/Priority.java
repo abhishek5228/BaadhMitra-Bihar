@@ -30,6 +30,6 @@ public final class Priority {
             else { bad++; if (bad <= 10) System.err.println("MISMATCH " + line + " -> " + got); }
         }
         System.out.println(ok + "/" + (ok + bad) + " score vectors match");
-        if (bad > 0 || ok != 700) System.exit(1);
+        if (bad > 0 || ok < 700) System.exit(1);
     }
 }

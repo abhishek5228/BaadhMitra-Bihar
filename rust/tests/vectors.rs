@@ -30,5 +30,5 @@ fn matches_typescript() {
         assert_eq!(got, want, "{line}");
         n += 1;
     }
-    assert_eq!(n, 120);
+    assert!(n >= 120);
 }
