@@ -534,6 +534,8 @@ async function main(): Promise<void> {
     bar.replaceChildren(
       ...gs.map((g) => {
         const c = h('div', 'g ' + g.state + (g.stale ? ' stale' : ''), h('b', '', g.name), h('span', '', `${g.lvl.toFixed(2)} m`), h('small', '', `${T.state[g.state]} · ${g.trend >= 0 ? '▲' : '▼'}${Math.abs(g.trend).toFixed(2)}`))
+        const eta = hoursToDanger(g)
+        if (eta !== null) c.append(h('small', 'eta', `⏱ ~${eta} h ${T.toDanger}`))
         if (g.sim) c.title = T.sim
         if (g.stale) c.title = T.stale
         return c
