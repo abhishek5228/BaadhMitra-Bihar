@@ -51,6 +51,16 @@ test.describe('staff dashboard (demo mode)', () => {
     await expect(dlg).toHaveCount(0)
   })
 
+  test('opening an incident suggests the nearest crews and a click picks one', async ({ page }) => {
+    await page.locator('.row').first().click()
+    const hints = page.locator('.sugg .chip')
+    await expect(hints.first()).toBeVisible()
+    expect(await hints.count()).toBeLessThanOrEqual(3)
+    const name = (await hints.first().innerText()).split(' · ')[0]
+    await hints.first().click()
+    await expect(page.locator('.dispatch select')).toHaveValue(name)
+  })
+
   test('the monsoon surge brings in new incidents', async ({ page }) => {
     const before = await page.locator('.row').count()
     await page.getByRole('button', { name: /surge/i }).click()

@@ -160,3 +160,5 @@ blockquote small { color: var(--mu); font-size: 11px; }
 .tab.on { background: #4da3ff; color: #06101f; font-weight: 700; }
 .tab:focus-visible, .find:focus-visible, .close:focus-visible { outline: 2px solid var(--bl); outline-offset: 2px; }
 .key { display: block; font-size: 17px; letter-spacing: 1px; padding: 10px; margin: 8px 0; border-radius: 8px; background: rgba(255, 255, 255, 0.08); word-break: break-all; user-select: all; }
+.sugg { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sugg .mu { width: 100%; }

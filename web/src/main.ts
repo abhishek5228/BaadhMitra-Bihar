@@ -4,6 +4,8 @@ import { WRONGS } from '../../shared/types'
 import { sla } from '../../shared/sla'
 import { filt, type Mode } from './filter'
 import { toCsv } from './csv'
+import { suggest } from '../../shared/suggest'
+import { hoursToDanger } from '../../shared/trend'
 import { chunk } from './auth'
 import { inBihar } from '../../shared/geo'
 import { connect, Expired, type Api, type Pin, type St } from './api'
@@ -297,6 +299,23 @@ async function main(): Promise<void> {
     const roster = tms.length ? tms : TEAMS.map((id) => ({ id, busy: false }) as Team)
     for (const t of roster) team.append(new Option(t.id + (t.busy ? ' · ' + T.assigned : ''), t.id))
     const go = h('button', 'btn go', '🚤 ' + T.assign)
+    // Nearest crews by straight-line distance. A hint only: the dispatcher still chooses.
+    const sg = suggest(i, tms, Date.now())
+    const hints = sg.length
+      ? h(
+          'div',
+          'sugg',
+          h('small', 'mu', T.sugg),
+          ...sg.map((x) => {
+            const b = h('button', 'chip tab', `${x.id} · ${x.km} km · ~${x.eta} min${x.busy ? ' · ' + T.assigned : ''}${x.stale ? ' ⚠' : ''}`)
+            if (x.stale) b.title = T.sgOld
+            b.onclick = () => {
+              team.value = x.id
+            }
+            return b
+          }),
+        )
+      : null
     go.onclick = async () => {
       try {
         await api.assign(i.id, team.value)
@@ -346,7 +365,7 @@ async function main(): Promise<void> {
       h('h3', '', T.msgs),
       sn,
       can('dispatch') ? fb : null,
-      i.status === 'resolved' ? null : can('dispatch') ? h('div', 'dispatch', team, go, done, dis) : h('div', 'flag', T.readonly),
+      i.status === 'resolved' ? null : can('dispatch') ? h('div', 'dispatch', hints, team, go, done, dis) : h('div', 'flag', T.readonly),
     )
   }
 
