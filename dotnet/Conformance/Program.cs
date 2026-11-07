@@ -70,5 +70,25 @@ foreach (var c in root.GetProperty("suggest").EnumerateArray())
     Check("suggest", i++, ok, $"got [{string.Join("; ", got)}], want {c.GetProperty("out")}");
 }
 
+i = 0;
+foreach (var c in root.GetProperty("geo").EnumerateArray())
+{
+    var x = c.GetProperty("in");
+    var o = c.GetProperty("out");
+    string h = Geohash.Encode(x.GetProperty("lat").GetDouble(), x.GetProperty("lon").GetDouble(), x.GetProperty("prec").GetInt32());
+    var m = Geohash.Centre(h);
+    Check("geo", i++, h == o.GetProperty("hash").GetString() && m.Lat == o.GetProperty("lat").GetDouble() && m.Lon == o.GetProperty("lon").GetDouble(), $"{x} -> {h} {m}");
+}
+
+i = 0;
+foreach (var c in root.GetProperty("pct").EnumerateArray())
+{
+    var x = c.GetProperty("in");
+    double? got = Stats.Percentile(x.GetProperty("a").EnumerateArray().Select(v => v.GetDouble()).ToList(), x.GetProperty("p").GetDouble());
+    var o = c.GetProperty("out");
+    double? want = o.ValueKind == JsonValueKind.Null ? null : o.GetDouble();
+    Check("pct", i++, got == want, $"{x} -> got {got}, want {want}");
+}
+
 Console.WriteLine($"{total - bad}/{total} vectors match");
 return bad == 0 ? 0 : 1;
