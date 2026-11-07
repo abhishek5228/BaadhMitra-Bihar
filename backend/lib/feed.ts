@@ -47,7 +47,14 @@ export function normalize(js: unknown): { rows: Rd[]; dropped: number } {
     }
     rows.push({ id: String(o.id).slice(0, 40), name: String(o.name ?? o.id).slice(0, 60), river: String(o.river ?? '').slice(0, 40), lat, lon, lvl, danger, ts: when(o.ts), sim: false })
   }
-  return { rows, dropped }
+  // A station listed twice keeps its newest reading (a missing time counts as oldest; a tie keeps the later row).
+  const best = new Map<string, Rd>()
+  for (const r of rows) {
+    const prev = best.get(r.id)
+    if (!prev || (r.ts ?? -1) >= (prev.ts ?? -1)) best.set(r.id, r)
+  }
+  const kept = [...best.values()]
+  return { rows: kept, dropped: dropped + (rows.length - kept.length) }
 }
 
 /** True when the reading is too old to trust for a warning. */

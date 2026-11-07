@@ -66,6 +66,13 @@ describe('gauge feed', () => {
     expect(normalize([{ ...b, lat: 0, lon: 0 }]).dropped).toBe(1)
     expect(normalize([{ ...b, lat: 27.5, lon: 87.1 }]).rows).toHaveLength(1) // an upstream gauge across the border still counts
   })
+  it('keeps only the newest reading of a station listed twice', () => {
+    const b = { id: 'a', lat: 25, lon: 85, danger: 50 }
+    const { rows, dropped } = normalize([{ ...b, lvl: 41, ts: 2000 }, { ...b, lvl: 40, ts: 1000 }, { ...b, lvl: 39 }])
+    expect(rows).toHaveLength(1)
+    expect(rows[0].lvl).toBe(41)
+    expect(dropped).toBe(2)
+  })
   it('accepts seconds or ms timestamps and flags stale', () => {
     const now = Date.now()
     const a = normalize([{ id: 'a', lat: 25, lon: 85, lvl: 40, danger: 50, ts: Math.floor(now / 1000) }]).rows[0]
