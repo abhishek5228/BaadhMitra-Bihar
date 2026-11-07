@@ -14,6 +14,10 @@ export interface Rd {
   sim: boolean
 }
 
+/** Upstream gauges in Nepal and neighbouring states matter to Bihar, so this box is wider than Bihar itself. */
+const REGION = { s: 20, n: 32, w: 78, e: 90 }
+const inRegion = (lat: number, lon: number): boolean => lat >= REGION.s && lat <= REGION.n && lon >= REGION.w && lon <= REGION.e
+
 export const STALE_MS = 3 * 3600_000
 
 function when(v: unknown): number | null {
@@ -36,7 +40,7 @@ export function normalize(js: unknown): { rows: Rd[]; dropped: number } {
     const lat = Number(o.lat)
     const lon = Number(o.lon)
     const ok =
-      typeof o.id === 'string' && o.id && Number.isFinite(lvl) && lvl > -5 && lvl < 200 && Number.isFinite(danger) && danger > 0 && danger < 200 && Number.isFinite(lat) && Number.isFinite(lon)
+      typeof o.id === 'string' && o.id && Number.isFinite(lvl) && lvl > -5 && lvl < 200 && Number.isFinite(danger) && danger > 0 && danger < 200 && Number.isFinite(lat) && Number.isFinite(lon) && inRegion(lat, lon)
     if (!ok) {
       dropped++
       continue

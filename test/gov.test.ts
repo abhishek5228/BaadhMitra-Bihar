@@ -60,6 +60,12 @@ describe('gauge feed', () => {
     expect(rows.length).toBe(1)
     expect(dropped).toBe(3)
   })
+  it('drops a reading whose position is nowhere near the region', () => {
+    const b = { id: 'a', lat: 25, lon: 85, lvl: 40, danger: 50 }
+    expect(normalize([{ ...b, lat: 10 }]).dropped).toBe(1)
+    expect(normalize([{ ...b, lat: 0, lon: 0 }]).dropped).toBe(1)
+    expect(normalize([{ ...b, lat: 27.5, lon: 87.1 }]).rows).toHaveLength(1) // an upstream gauge across the border still counts
+  })
   it('accepts seconds or ms timestamps and flags stale', () => {
     const now = Date.now()
     const a = normalize([{ id: 'a', lat: 25, lon: 85, lvl: 40, danger: 50, ts: Math.floor(now / 1000) }]).rows[0]
