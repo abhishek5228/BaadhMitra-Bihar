@@ -38,7 +38,18 @@ export function add(text: string, pin?: Pin, now = Date.now()): Item {
  * Try to send everything waiting. `send` rejects when offline or the server fails; the item then stays.
  * Returns how many were delivered and how many are still waiting.
  */
-export async function flush(send: (i: Item) => Promise<void>): Promise<{ sent: number; left: number }> {
+let busy: Promise<{ sent: number; left: number }> | null = null
+
+export function flush(send: (i: Item) => Promise<void>): Promise<{ sent: number; left: number }> {
+  // The timer, the "online" event and the send button can all call this at once. One run at a time,
+  // otherwise the same report would be posted twice and counted as two reporters.
+  busy ??= run(send).finally(() => {
+    busy = null
+  })
+  return busy
+}
+
+async function run(send: (i: Item) => Promise<void>): Promise<{ sent: number; left: number }> {
   let sent = 0
   for (const it of read()) {
     try {
