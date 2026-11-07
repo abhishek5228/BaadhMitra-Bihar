@@ -117,6 +117,11 @@ export const handler = async (e: APIGatewayProxyEvent): Promise<APIGatewayProxyR
   switch (route) {
     case 'GET /incidents': {
       const all = await listInc(150)
+      // ?all=1 includes closed incidents, for after-action analysis. Officers only: it exposes the whole history.
+      if (e.queryStringParameters?.all === '1') {
+        if (!can(w, 'admin')) return bad('your role may not do this', 403)
+        return ok({ items: all.map(strip) })
+      }
       return ok({ items: all.filter((i) => i.status !== 'resolved' && i.status !== 'dismissed').map(strip) })
     }
 

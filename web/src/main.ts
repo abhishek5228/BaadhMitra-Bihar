@@ -427,9 +427,11 @@ async function main(): Promise<void> {
       )
       const card = h('div', 'card', x, h('h2', '', T.rtitle), tb, h('small', 'mu', T.rnote))
       const cs = h('button', 'btn', '⬇ ' + T.cexport)
-      cs.onclick = () => {
+      cs.onclick = async () => {
+        // Officers get the whole history including closed incidents, which after-action analysis needs.
+        const rows = can('admin') ? await api.incidents(true).catch(() => incs) : incs
         const a = document.createElement('a')
-        a.href = URL.createObjectURL(new Blob([toCsv(incs, Date.now())], { type: 'text/csv' }))
+        a.href = URL.createObjectURL(new Blob([toCsv(rows, Date.now())], { type: 'text/csv' }))
         a.download = 'baadhmitra-incidents.csv'
         a.click()
         URL.revokeObjectURL(a.href)

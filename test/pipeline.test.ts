@@ -168,6 +168,13 @@ describe('text report -> queue -> extractor -> dispatcher API', async () => {
     expect(as.score).toBeLessThan(a.score)
     await api(ev('/incidents/{id}/resolve', 'POST', {}, { id: a.id }))
     expect(JSON.parse((await api(ev('/incidents', 'GET'))).body).items).toHaveLength(0)
+    // officers can still read the closed incident for after-action analysis; other roles cannot
+    const all = (g: string) => api({ ...ev('/incidents', 'GET', undefined, undefined, g), queryStringParameters: { all: '1' } })
+    const hist = JSON.parse((await all('district_officer')).body).items
+    expect(hist).toHaveLength(1)
+    expect(hist[0]).toMatchObject({ status: 'resolved', by: 'control' })
+    expect((await all('control_room')).statusCode).toBe(403)
+    expect((await all('viewer')).statusCode).toBe(403)
   })
 
   it('alerts the ops topic once when an incident first crosses priority 75', async () => {

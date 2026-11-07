@@ -10,7 +10,7 @@ export interface Api {
   who: string // signed-in person (empty in demo)
   roles: Role[]
   signOut?: () => void
-  incidents(): Promise<Inc[]>
+  incidents(all?: boolean): Promise<Inc[]> // all = include closed ones (officers only)
   gauges(): Promise<Gauge[]>
   alerts(): Promise<Alert[]>
   stats(): Promise<St>
@@ -73,7 +73,7 @@ function live(cfg: Cfg, ss: Sess): Api {
       clear()
       location.reload()
     },
-    incidents: async () => (await call<{ items: Inc[] }>('GET', '/incidents')).items,
+    incidents: async (all) => (await call<{ items: Inc[] }>('GET', all ? '/incidents?all=1' : '/incidents')).items,
     gauges: async () => (await call<{ items: Gauge[] }>('GET', '/gauges')).items,
     alerts: async () => (await call<{ items: Alert[] }>('GET', '/alerts')).items,
     stats: () => call<St>('GET', '/stats'),
