@@ -1,6 +1,7 @@
 import './style.css'
 import type { Alert, Gauge, Inc, Need, Team, Wrong } from '../../shared/types'
 import { WRONGS } from '../../shared/types'
+import { attention, type Issue } from '../../shared/attention'
 import { sla } from '../../shared/sla'
 import { filt, type Mode } from './filter'
 import { toCsv } from './csv'
@@ -208,8 +209,23 @@ async function main(): Promise<void> {
     return [m, b] as [Mode, HTMLElement]
   })
   const qbar = h('div', 'qbar', qin, h('div', 'tabs', ...tabs.map(([, b]) => b)))
+  function attn(iss: Issue[]): HTMLElement {
+    const box = h('div', 'attn', h('h3', '', `${T.attn.title}${iss.length ? ` (${iss.length})` : ''}`))
+    box.setAttribute('aria-live', 'polite')
+    if (!iss.length) box.append(h('p', 'empty', '✓ ' + T.attn.none))
+    for (const x of iss) {
+      const txt = `${x.n} ${T.attn[x.kind]}${x.hrs !== undefined ? ` ${T.attn.within} ${x.hrs} ${T.attn.h}` : ''}`
+      const b = h('button', 'att l' + x.lvl, h('span', '', x.lvl === 2 ? '🔴' : '🟡'), h('span', '', txt))
+      if (x.ref) b.onclick = () => pickInc(x.ref as string)
+      else (b as HTMLButtonElement).disabled = true
+      box.append(b)
+    }
+    return box
+  }
+
   function drawQueue(): void {
-    if (!changed('q', [lang, sel, qtxt, mode, als.map((a) => a.id), incs.map((i) => [i.id, i.score, i.n, i.ppl, i.status, i.review, ago(i.last), sla(i, Date.now()).lvl, Math.floor(sla(i, Date.now()).mins / 5)])])) return
+    const iss = attention({ incs, gauges: gs, teams: tms, unplaced: st.unpl, now: Date.now() })
+    if (!changed('q', [lang, sel, qtxt, mode, iss, als.map((a) => a.id), incs.map((i) => [i.id, i.score, i.n, i.ppl, i.status, i.review, ago(i.last), sla(i, Date.now()).lvl, Math.floor(sla(i, Date.now()).mins / 5)])])) return
     const keep = left.querySelector('.list')?.scrollTop ?? 0 // a refresh must not yank the list back to the top
     const list = h('div', 'list')
     const shown = filt(incs, qtxt, mode, Date.now())
@@ -239,7 +255,7 @@ async function main(): Promise<void> {
     const had = document.activeElement === qin
     qin.placeholder = T.find
     for (const [m, b] of tabs) b.textContent = { all: T.fAll, late: T.fLate, free: T.fFree }[m]
-    put(left, h('h2', '', T.queue), qbar, list, als.length ? h('h2', '', T.alerts) : null, als.length ? gl : null)
+    put(left, h('h2', '', T.queue), attn(iss), qbar, list, als.length ? h('h2', '', T.alerts) : null, als.length ? gl : null)
     list.scrollTop = keep
     if (had) qin.focus()
   }

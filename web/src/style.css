@@ -60,8 +60,8 @@ button, select, textarea { font: inherit; color: inherit; }
 .btn.mini { padding: 4px 8px; font-size: 12px; margin-top: 6px; }
 .btn[disabled] { opacity: 0.5; pointer-events: none; }
 
-.left { left: 12px; top: calc(var(--tb, 74px) + 12px); bottom: 150px; width: 320px; display: flex; flex-direction: column; min-height: 0; }
-.list { overflow-y: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }
+.left { left: 12px; top: calc(var(--tb, 74px) + 12px); bottom: 150px; width: 320px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.list { overflow-y: auto; flex: 1; min-height: 96px; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }
 .row { display: flex; gap: 10px; align-items: center; text-align: left; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); border-radius: 12px; padding: 8px 10px; cursor: pointer; }
 .row:hover, .row.on { background: rgba(77, 163, 255, 0.16); border-color: var(--bl); }
 .sc { flex: none; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; color: #0b1220; font-variant-numeric: tabular-nums; }
@@ -72,7 +72,7 @@ button, select, textarea { font: inherit; color: inherit; }
 .chip.blue { background: rgba(77, 163, 255, 0.25); color: #bcdcff; }
 .chip.warn { background: rgba(245, 165, 36, 0.25); color: var(--wa); }
 .empty { color: var(--mu); text-align: center; padding: 20px 0; }
-.alist { display: flex; flex-direction: column; gap: 6px; max-height: 190px; overflow-y: auto; }
+.alist { display: flex; flex-direction: column; gap: 6px; max-height: 84px; overflow-y: auto; }
 .al { border-left: 3px solid var(--wa); background: rgba(255, 255, 255, 0.04); border-radius: 8px; padding: 6px 8px; font-size: 12px; }
 .al.danger { border-color: var(--bd); }
 .al p { margin: 3px 0 0; color: var(--mu); }
@@ -163,3 +163,10 @@ blockquote small { color: var(--mu); font-size: 11px; }
 .sugg { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .sugg .mu { width: 100%; }
 .g .eta { color: #ffb347; font-weight: 700; }
+
+.attn { margin: 0 0 10px; max-height: 92px; overflow-y: auto; flex: none; }
+.attn h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.75; }
+.att { display: flex; gap: 8px; width: 100%; text-align: left; font: inherit; font-size: 12.5px; color: inherit; background: rgba(255, 255, 255, 0.06); border: 0; border-left: 3px solid var(--wa, #f5a524); border-radius: 6px; padding: 6px 8px; margin: 0 0 4px; cursor: pointer; }
+.att.l2 { border-left-color: #ff5d5d; background: rgba(255, 93, 93, 0.12); }
+.att:disabled { cursor: default; }
+.att:not(:disabled):hover, .att:not(:disabled):focus-visible { background: rgba(255, 255, 255, 0.14); }
