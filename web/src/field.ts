@@ -3,6 +3,7 @@ import type { Inc, Need } from '../../shared/types'
 import { Expired, authed } from './api'
 import { clear, load, type Cfg, type Sess } from './auth'
 import { showLogin } from './login'
+import { shouldPing, type Fix } from './pingrule'
 
 // The rescue crew's own page. Phone first, Hindi first, works on a patchy network:
 // progress taps are saved on the phone and sent when the signal returns.
@@ -85,7 +86,7 @@ async function main(): Promise<void> {
   let queuedMsg = false
   let share = false
   let watch = -1
-  let lastPing = 0
+  let lastFix: Fix | null = null
   let armed = '' // two-tap confirmation for done / nofind
   let sig = ''
 
@@ -97,8 +98,9 @@ async function main(): Promise<void> {
 
   // ---- location sharing: only while the crew chooses, only while this page is open
   const ping = async (lat: number, lon: number) => {
-    if (Date.now() - lastPing < 25_000) return
-    lastPing = Date.now()
+    const fix = { lat, lon, t: Date.now() }
+    if (!shouldPing(lastFix, fix)) return
+    lastFix = fix
     try {
       await call('POST', '/field/ping', { lat, lon })
     } catch (e) {

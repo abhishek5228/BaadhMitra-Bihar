@@ -26,7 +26,7 @@ Each queue row can show a badge such as `⏰ 22m`: amber is a warning, red is ov
 
 ## Rescue crews
 
-Crews use `/field.html`. They see only their own incidents and tap *on the way*, *arrived*, *rescue complete*, or *nobody found*. *Complete* resolves the incident (shown as "closed by team"). *Nobody found* returns it to the queue marked for review: **read it again, do not just reassign blindly.** If a crew shows no position, it has not shared its location.
+Crews use `/field.html`. They see only their own incidents and tap *on the way*, *arrived*, *rescue complete*, or *nobody found*. *Complete* resolves the incident (shown as "closed by team"). *Nobody found* returns it to the queue marked for review: **read it again, do not just reassign blindly.** If a crew shows no position, it has not shared its location. A crew that is moving updates about every 25 seconds; one standing still sends a "still here" signal about every 3 minutes, so an unmoving marker is normal. These timings are untested on real phones and should be checked in a drill.
 
 ## Telling the system when it is wrong
 
