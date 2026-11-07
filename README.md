@@ -8,7 +8,7 @@
 Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicated rescue queue on a live 3D map. Rescue crews get their own phone page, and nothing waits unnoticed.
 
 [![CI](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml/badge.svg)](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml)
-![tests](https://img.shields.io/badge/tests-215%20passing-2fbf71)
+![tests](https://img.shields.io/badge/tests-229%20passing-2fbf71)
 ![AWS](https://img.shields.io/badge/AWS-Lambda%20%C2%B7%20SQS%20%C2%B7%20DynamoDB%20%C2%B7%20Bedrock%20%C2%B7%20Cognito-ff9900)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![three.js](https://img.shields.io/badge/3D-three.js-black)
@@ -187,6 +187,10 @@ Read it as: severity moves the score the most; more independent reporters help b
 
 Thresholds live in `shared/sla.ts`: open incidents warn at 15 minutes and breach at 30 if the score is 75 or more (30 and 60 otherwise); an assigned crew that stays silent warns at 60 and breaches at 120. A sweep Lambda runs every five minutes, and a field called `esc` makes sure each breach alerts once. These are starting values to agree with a control room, not official standards.
 
+### Shift handover sheet
+
+The header's Handover button opens a one-page sheet for the next shift: open and assigned incidents ranked by priority with their waiting time, each crew's last position, and rivers near or above the danger mark. Printing hides the rest of the page. It carries place, counts and needs, never citizens' messages, and has signature lines. Simulated gauge readings are marked as such.
+
 ## Who can do what
 
 | Role | Sees | Can do |
@@ -249,10 +253,10 @@ flowchart LR
 
 ## Tests and evaluation
 
-<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 215 passing tests by area" width="70%"/></p>
+<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 229 passing tests by area" width="70%"/></p>
 
 ```bash
-npm run typecheck && npm test      # 215 tests: core logic, the Lambda pipeline against a fake AWS, the gauge poller, the WhatsApp webhook, voice notes and the extractor with a good, bad or missing model, roles and audit, feeds, offline queue, CDK guarantees, accuracy kit
+npm run typecheck && npm test      # 229 tests: core logic, the Lambda pipeline against a fake AWS, the gauge poller, the WhatsApp webhook, voice notes and the extractor with a good, bad or missing model, roles and audit, feeds, offline queue, CDK guarantees, accuracy kit
 npm run coverage                   # statement coverage of shared/ and backend/ (about 98%; branches about 87%)
 npm run eval                       # extractor benchmark (add LLM=1 MODEL=<id> to score Bedrock)
 npx cdk synth                      # validates the CloudFormation template
@@ -271,7 +275,7 @@ npm run docs:data && npm run docs:graphs # regenerate the numbers and graphs in 
 | Dashboard and phone helpers (`filter`, `csv`, `queue`, `pingrule`, `mfa`, `villages-import`, `logic`) | 35 | queue search, CSV export, single-flight outbox, crew pings, two-step enrolment, village import, crew suggestions and time-to-danger |
 | Accuracy kit and feed adapter (`kit.test.ts`) | 12 | CSV parsing, label normalisation, confidence intervals, labeler agreement, foreign gauge feeds mapped without inventing values |
 
-On top of these, `npm run e2e` runs 17 Playwright browser tests against the built site in demo mode (ranked queue, search and filters, crew suggestions, dialogs, surge, and the citizen page keeping a report offline and sending it when the network returns, and saying so when it is rate-limited). They run in CI and need no AWS.
+On top of these, `npm run e2e` runs 20 Playwright browser tests against the built site in demo mode (ranked queue, search and filters, crew suggestions, dialogs, surge, and the citizen page keeping a report offline and sending it when the network returns, and saying so when it is rate-limited, the crew page announcing a new job, and the printable handover sheet). They run in CI and need no AWS.
 
 What the tests do **not** cover: a live AWS account, real WhatsApp traffic, real phones' GPS, or any real flood message. The pipeline tests run on fakes.
 

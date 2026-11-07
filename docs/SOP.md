@@ -20,6 +20,10 @@ For the people operating BaadhMitra in a flood control room. BaadhMitra ranks an
 
 `/` goes to search. `j` and `k` move down and up the queue. `Esc` closes the detail. The 🔔 button in the header turns on a beep for new urgent incidents; it is off until someone turns it on, and the browser only allows sound after that click. To send a crew an incident, use the WhatsApp or copy buttons on it: the brief has the place, people, needs and map link, and never the citizens' own words.
 
+## Handing over a shift
+
+The **🖨 Handover** button in the header opens a one-page sheet: open and assigned incidents (most urgent first, with how long each has waited), every crew with when it last shared a position, and the rivers near or above their danger mark. **Print** gives paper with just that sheet, and lines for who handed over, who received, and notes. It lists place, counts and needs only, never the citizens' own messages. A river marked *simulated* is demo data. Keep the paper as the log of what was open at the changeover; it is correct only for the minute it was printed.
+
 ## Overdue clock
 
 Each queue row can show a badge such as `⏰ 22m`: amber is a warning, red is overdue. The header counts overdue incidents.
