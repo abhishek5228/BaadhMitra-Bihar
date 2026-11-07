@@ -100,6 +100,37 @@ test.describe('staff dashboard (demo mode)', () => {
     expect(clip).toContain('google.com/maps')
   })
 
+  test('the tab title carries the number of open or overdue incidents', async ({ page }) => {
+    await expect(page).toHaveTitle(/^\((⏰ )?\d+\) /)
+  })
+
+  test('keys: / searches, j and k walk the queue, Escape closes the detail', async ({ page }) => {
+    await page.keyboard.press('j')
+    await expect(page.locator('.panel.right')).not.toHaveClass(/hide/)
+    const first = await page.locator('.row.on b').first().innerText()
+    await page.keyboard.press('j')
+    expect(await page.locator('.row.on b').first().innerText()).not.toBe(first)
+    await page.keyboard.press('k')
+    expect(await page.locator('.row.on b').first().innerText()).toBe(first)
+    await page.keyboard.press('Escape')
+    await expect(page.locator('.panel.right')).toHaveClass(/hide/)
+    await page.keyboard.press('/')
+    await expect(page.locator('input.find')).toBeFocused()
+    await page.keyboard.type('j') // typing in the box must not walk the queue
+    await expect(page.locator('.panel.right')).toHaveClass(/hide/)
+  })
+
+  test('the language and the sound switch are remembered after a reload', async ({ page }) => {
+    await page.getByRole('button', { name: 'हिं' }).click()
+    const snd = page.getByRole('button', { name: /🔕/ })
+    await snd.click()
+    await expect(page.getByRole('button', { name: /🔔/ })).toHaveAttribute('aria-pressed', 'true')
+    await page.reload()
+    await expect(page.locator('.row').first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator('html')).toHaveAttribute('lang', 'hi')
+    await expect(page.getByRole('button', { name: /🔔/ })).toHaveAttribute('aria-pressed', 'true')
+  })
+
   test('the monsoon surge brings in new incidents', async ({ page }) => {
     const before = await page.locator('.row').count()
     await page.getByRole('button', { name: /surge/i }).click()
