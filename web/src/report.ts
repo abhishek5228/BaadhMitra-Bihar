@@ -1,6 +1,7 @@
 import './report.css'
 import { citizen, type Pin } from './api'
 import { add, flush, read, type Item } from './queue'
+import { clearDraft, loadDraft, saveDraft } from './draft'
 import { inBihar } from '../../shared/geo'
 import { compose } from './compose'
 
@@ -73,6 +74,21 @@ async function main(): Promise<void> {
     }
     chips.append(b)
   }
+  const keep = (): void => saveDraft({ place: place.value, ppl: ppl.value, free: free.value, needs: [...picked] })
+  for (const el of [place, ppl, free]) el.addEventListener('input', keep)
+  chips.addEventListener('click', keep)
+  const old = loadDraft() // a reload or a dead battery must not cost the person their words
+  if (old) {
+    place.value = old.place
+    ppl.value = old.ppl
+    free.value = old.free
+    for (const [k] of NEEDS) if (old.needs.includes(k)) picked.add(k)
+    chips.querySelectorAll('.chip').forEach((c, n) => {
+      const on = picked.has(NEEDS[n][0])
+      c.classList.toggle('on', on)
+      c.setAttribute('aria-pressed', String(on))
+    })
+  }
 
   const loc = h('button', 'btn alt', '📍 मेरी जगह जोड़ें') as HTMLButtonElement
   loc.type = 'button'
@@ -115,6 +131,7 @@ async function main(): Promise<void> {
     const text = compose(place.value, ppl.value, NEEDS.filter((n) => picked.has(n[0])).map((n) => n[2]), free.value)
     if (text.replace(/[\s,]/g, '').length < 3) return note('कृपया कुछ जानकारी भरें।', true)
     add(text, pin) // saved on the phone first; it can never be lost to a dropped connection
+    clearDraft() // the words are now in the outbox, which is safer than a draft
     drawWait()
     send.disabled = true
     try {
