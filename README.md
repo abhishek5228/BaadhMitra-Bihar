@@ -8,9 +8,9 @@
 Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicated rescue queue on a live 3D map. Rescue crews get their own phone page, and nothing waits unnoticed.
 
 [![CI](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml/badge.svg)](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml)
-![tests](https://img.shields.io/badge/tests-178%20passing-2fbf71)
+![tests](https://img.shields.io/badge/tests-193%20passing-2fbf71)
 ![AWS](https://img.shields.io/badge/AWS-Lambda%20%C2%B7%20SQS%20%C2%B7%20DynamoDB%20%C2%B7%20Bedrock%20%C2%B7%20Cognito-ff9900)
-![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3193c6)
 ![three.js](https://img.shields.io/badge/3D-three.js-black)
 
 ### [Open the 3D demo](https://dr2l39p60xv7s.cloudfront.net/index.html?demo=1) · [Citizen report page](https://dr2l39p60xv7s.cloudfront.net/report.html) · [Crew page](https://dr2l39p60xv7s.cloudfront.net/field.html) · [Staff dashboard (login)](https://dr2l39p60xv7s.cloudfront.net/)
@@ -240,11 +240,11 @@ flowchart LR
 
 ## Tests and evaluation
 
-<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 178 passing tests by area" width="70%"/></p>
+<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 193 passing tests by area" width="70%"/></p>
 
 ```bash
-npm run typecheck && npm test      # 178 tests: core logic, the Lambda pipeline against a fake AWS, the gauge poller, the WhatsApp webhook and voice notes, roles and audit, feeds, offline queue, CDK guarantees, accuracy kit
-npm run coverage                   # statement coverage of shared/ and backend/ (about 97%; branches about 86%)
+npm run typecheck && npm test      # 193 tests: core logic, the Lambda pipeline against a fake AWS, the gauge poller, the WhatsApp webhook, voice notes and the extractor with a good, bad or missing model, roles and audit, feeds, offline queue, CDK guarantees, accuracy kit
+npm run coverage                   # statement coverage of shared/ and backend/ (about 98%; branches about 87%)
 npm run eval                       # extractor benchmark (add LLM=1 MODEL=<id> to score Bedrock)
 npx cdk synth                      # validates the CloudFormation template
 npm run loadtest -- <api> 200 20 --yes   # load test the public endpoint (use a staging stack)
