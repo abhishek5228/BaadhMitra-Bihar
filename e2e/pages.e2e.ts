@@ -27,6 +27,16 @@ test.describe('staff dashboard (demo mode)', () => {
     expect(sc).toEqual([...sc].sort((a, b) => b - a))
   })
 
+  test('the attention panel lists live problems and a click opens the incident behind one', async ({ page }) => {
+    const box = page.locator('.attn')
+    await expect(box).toContainText(/Needs attention|ध्यान चाहिए/)
+    await page.getByRole('button', { name: /surge/i }).click()
+    const clickable = box.locator('button.att:not([disabled])')
+    await expect.poll(() => clickable.count(), { timeout: 20_000 }).toBeGreaterThan(0)
+    await clickable.first().click()
+    await expect(page.locator('.panel.right')).not.toHaveClass(/hide/)
+  })
+
   test('search narrows the queue, keeps typing focus, and says when nothing matches', async ({ page }) => {
     const all = await page.locator('.row').count()
     await page.fill('.find', 'supaul')
