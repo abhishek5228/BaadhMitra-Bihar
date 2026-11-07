@@ -100,6 +100,7 @@ async function main(): Promise<void> {
     if (!read().length) return
     const r = await flush(push)
     if (r.sent) note(`✓ ${r.sent} सूचना पहुँच गई। धन्यवाद।`)
+    if (r.failed) note('कोई सूचना स्वीकार नहीं हुई। उसे छोटा करके दोबारा भेजें।', true)
     drawWait()
   }
 
@@ -111,7 +112,8 @@ async function main(): Promise<void> {
     send.disabled = true
     try {
       const r = await flush(push)
-      if (r.left === 0) {
+      if (r.failed) note('सूचना स्वीकार नहीं हुई। उसे छोटा करके दोबारा भेजें, या 112 पर कॉल करें।', true)
+      else if (r.left === 0) {
         note('✓ सूचना कंट्रोल रूम तक पहुँच गई। धन्यवाद। आपातकाल में 112 पर कॉल करें।')
         place.value = ppl.value = free.value = ''
         picked.clear()
