@@ -273,17 +273,6 @@ The weakest points of this project are the ones the author cannot fix alone. The
 | **Real river data** | A config-driven feed adapter (`FEED_MAP`: field paths, units, station table), `npm run feed:check`, and a data-request email in [`DATA-REQUEST.md`](docs/DATA-REQUEST.md) | **No official feed connected.** Levels stay `sim`. |
 | **Practitioner feedback** | Demo and request emails in English and Hindi ([`outreach/`](docs/outreach)), a ten-question [feedback form](docs/outreach/FEEDBACK-FORM.md), and an honest log, [`FEEDBACK.md`](docs/FEEDBACK.md) | **None collected yet.** The log is empty on purpose. |
 
-## More than one language, on purpose
-
-The core is TypeScript so the same scoring and extraction code runs in the Lambdas and in the browser. Two small tools sit beside it where another language is the better fit:
-
-| Tool | Language | Why it exists |
-| --- | --- | --- |
-| [`tools/bmctl`](tools/bmctl) | Go | A single static binary for a control-room PC with a poor connection or no browser: `queue`, `gauges`, `export`. Read-only. |
-| [`analysis/afteraction.py`](analysis/afteraction.py) | Python | Turns the incident CSV into an after-action report with bootstrap confidence intervals, using only the standard library. |
-
-Both read the same CSV and API the dashboard uses, have their own tests, and run in CI. Neither can change an incident.
-
 ## Docs for a real pilot
 
 | Doc | For |
@@ -297,6 +286,14 @@ Both read the same CSV and API the dashboard uses, have their own tests, and run
 | [`outreach/`](docs/outreach) · [`FEEDBACK.md`](docs/FEEDBACK.md) | demo request emails, feedback form, the feedback log |
 | [`PITCH.md`](docs/PITCH.md) · [`DEMO-SCRIPT.md`](docs/DEMO-SCRIPT.md) | one-page pitch and a 5-minute demo script |
 
+## C# port, checked against the TypeScript
+
+`dotnet/BaadhMitra.Core` is a C# (.NET 8) version of the pure decision rules: priority score, overdue clock, great-circle distance, time-to-danger and crew ranking. The deployed system runs the TypeScript; the C# is not in the Lambdas. It is there for teams that live in .NET (a state data centre, a GIS or ERP integration) and want the same rules without re-deriving them.
+
+Two copies of a rule drift apart quietly, so `npm run vectors` writes 1,725 inputs and the TypeScript's answers to `conformance/vectors.json`, and `dotnet/Conformance` replays them against the C#. CI regenerates the file, fails if it changed, and runs the replay. Locally: `npm run vectors`, then `dotnet run -c Release --project dotnet/Conformance -- conformance/vectors.json`.
+
+What this proves: same answers on those inputs, including rounding edges (JavaScript rounds halves up, C# rounds to even by default, so the port handles it). What it does not: that the rules themselves are right; that is the job of the evaluation and a pilot.
+
 ## Repo layout
 
 ```
@@ -306,8 +303,8 @@ backend/    Lambda handlers: ingest, voice, extract, api, gauge, whatsapp, sla (
 infra/      AWS CDK stack (TypeScript)
 web/        3D dispatcher dashboard (Three.js + Vite), offline citizen report page, rescue-crew page
 docs/       pilot plan, deploy checklist, runbook, security, privacy, WhatsApp, pitch, demo script, assets
-tools/      bmctl: read-only Go terminal client (queue, gauges, CSV export)
-analysis/   Python after-action report from the incident CSV (bootstrap intervals)
+dotnet/     C# (.NET 8) port of score, SLA, distance, time-to-danger and crew ranking, plus a conformance runner
+conformance/ test vectors generated from the TypeScript (the C# port must reproduce every one)
 scripts/    deploy, village importer, load test, feed checker, README data and graph generators
 eval/       author benchmark, plus independent/ (labeling page, protocol, scorer)
 test/       unit tests and CDK assertion tests
