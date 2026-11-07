@@ -62,6 +62,7 @@ async function main(): Promise<void> {
   const comp = h('section', 'panel comp')
   const bar = h('section', 'gbar')
   const toast = h('div', 'toast hide')
+  toast.setAttribute('role', 'status') // read out by screen readers when a message appears
   app.append(stage, top, left, right, comp, bar, toast)
 
   const world = new World(stage, (id) => pickInc(id))
@@ -104,6 +105,28 @@ async function main(): Promise<void> {
   const can = (a: 'read' | 'dispatch' | 'admin'): boolean =>
     isDemo ? true : a === 'read' ? api.roles.some((r) => r !== 'field_team') : a === 'dispatch' ? api.roles.some((r) => r === 'control_room' || r === 'district_officer') : api.roles.includes('district_officer')
 
+  // A modal must be reachable and leavable without a mouse: label it, move focus in, close on Escape or a click outside.
+  function wire(box: HTMLElement, x: HTMLElement): void {
+    box.setAttribute('role', 'dialog')
+    box.setAttribute('aria-modal', 'true')
+    x.setAttribute('aria-label', 'close')
+    const esc = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') x.click()
+    }
+    document.addEventListener('keydown', esc)
+    const gone = new MutationObserver(() => {
+      if (!box.isConnected) {
+        document.removeEventListener('keydown', esc)
+        gone.disconnect()
+      }
+    })
+    gone.observe(app, { childList: true })
+    box.addEventListener('click', (e) => {
+      if (e.target === box) x.click()
+    })
+    queueMicrotask(() => x.focus())
+  }
+
   async function openAudit(): Promise<void> {
     try {
       const rows = await api.audit()
@@ -114,6 +137,7 @@ async function main(): Promise<void> {
       for (const r of rows) tb.append(h('tr', '', h('td', '', new Date(r.ts).toLocaleString()), h('td', '', r.actor), h('td', '', r.action + (r.team ? ` → ${r.team}` : '')), h('td', '', r.target)))
       box.append(h('div', 'card', x, h('h2', '', T.audit), rows.length ? tb : h('p', 'empty', T.none2)))
       app.append(box)
+      wire(box, x)
     } catch {
       say(T.err, true)
     }
@@ -367,6 +391,7 @@ async function main(): Promise<void> {
       }
       box.append(card)
       app.append(box)
+      wire(box, x)
     } catch {
       say(T.err, true)
     }

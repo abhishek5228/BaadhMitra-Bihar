@@ -125,7 +125,7 @@ blockquote small { color: var(--mu); font-size: 11px; }
   .right { left: 12px; right: 12px; width: auto; top: 76px; max-height: 50vh; }
   .lbl.dist { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
 
 /* staff sign-in, audit log, stale gauges */
 .g.stale { opacity: 0.6; border-left-color: #7b8494; background: rgba(120, 130, 150, 0.15); }
@@ -158,3 +158,4 @@ blockquote small { color: var(--mu); font-size: 11px; }
 .tabs { display: flex; gap: 6px; margin-top: 6px; }
 .tab { border: 0; color: inherit; cursor: pointer; font-family: inherit; }
 .tab.on { background: #4da3ff; color: #06101f; font-weight: 700; }
+.tab:focus-visible, .find:focus-visible, .close:focus-visible { outline: 2px solid var(--bl); outline-offset: 2px; }
