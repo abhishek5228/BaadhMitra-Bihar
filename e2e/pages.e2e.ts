@@ -131,6 +131,21 @@ test.describe('staff dashboard (demo mode)', () => {
     await expect(page.getByRole('button', { name: /🔔/ })).toHaveAttribute('aria-pressed', 'true')
   })
 
+  test('the handover sheet lists the queue on paper and is the only thing a printer gets', async ({ page }) => {
+    await page.getByRole('button', { name: /Handover|हैंडओवर/ }).click()
+    const sheet = page.locator('.hv .sheet')
+    await expect(sheet).toBeVisible()
+    await expect(sheet.locator('tbody tr').first()).toBeVisible()
+    await expect(sheet).toContainText(/Handed over by|सौंपने वाला/)
+    await page.emulateMedia({ media: 'print' })
+    await expect(sheet).toBeVisible()
+    await expect(page.locator('.hv .noprint').first()).toBeHidden()
+    await expect(page.locator('.top, .panel').first()).toBeHidden()
+    await page.emulateMedia({ media: 'screen' })
+    await page.keyboard.press('Escape')
+    await expect(page.locator('.hv')).toHaveCount(0)
+  })
+
   test('the monsoon surge brings in new incidents', async ({ page }) => {
     const before = await page.locator('.row').count()
     await page.getByRole('button', { name: /surge/i }).click()
