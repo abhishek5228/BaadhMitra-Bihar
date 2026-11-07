@@ -23,7 +23,7 @@ Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicat
 
 ## Contents
 
-[The problem](#the-problem) · [See it](#see-it) · [How one message travels](#how-one-message-travels) · [Use cases](#use-cases) · [Under the hood, with graphs](#under-the-hood-with-graphs) · [Roles](#who-can-do-what) · [Architecture](#architecture) · [Design decisions](#design-decisions-worth-knowing) · [Tests](#tests-and-evaluation) · [Run and deploy](#run-the-dashboard-locally-no-aws-needed) · [API](#api) · [Docs](#docs-for-a-real-pilot) · [Limits](#known-limits-and-next-steps)
+[The problem](#the-problem) · [See it](#see-it) · [How one message travels](#how-one-message-travels) · [Use cases](#use-cases) · [Shift handover](#12-the-next-shift-gets-a-sheet-of-paper) · [Under the hood, with graphs](#under-the-hood-with-graphs) · [Roles](#who-can-do-what) · [Architecture](#architecture) · [Design decisions](#design-decisions-worth-knowing) · [Tests](#tests-and-evaluation) · [Run and deploy](#run-the-dashboard-locally-no-aws-needed) · [API](#api) · [Docs](#docs-for-a-real-pilot) · [Limits](#known-limits-and-next-steps)
 
 ---
 
@@ -83,6 +83,8 @@ Try it: [`/report.html`](https://dr2l39p60xv7s.cloudfront.net/report.html)
 
 ### The rescue crew's page
 `/field.html`, sign-in required (role `field_team`). Shows only the incidents assigned to that crew, with a navigation link and big one-tap buttons. Taps are queued on the phone and sent when the signal returns. "Done" and "nobody found" need a second tap to confirm, and "nobody found" sends the incident back to the queue flagged for a human.
+
+Small things for a crew in a boat: a new assignment shows a banner, vibrates the phone and puts `(1)` in the tab title; every job says how long ago it was assigned; the screen stays awake while the location is being shared; the Hindi or English choice is remembered.
 
 </td>
   </tr>
@@ -172,6 +174,20 @@ Above the queue, a "Needs attention" list is recomputed on every refresh from da
 - An optional sound (off by default, button in the header) plays a short beep when a new urgent incident (priority 75 or more) appears.
 - On the citizen page, a half-written report is kept for six hours, so a reload or a dead battery does not cost the person their words.
 - Keys: `/` search, `j` and `k` next and previous incident, `Esc` close. The language you pick is remembered.
+- On the citizen page, a rate-limited send says so in Hindi and keeps the report; a send the server refuses for good is dropped instead of retrying forever; a flaky network never loses a report.
+- The crew page announces new jobs (banner, vibration, tab title), shows how long ago each job was assigned, keeps the screen awake while sharing location, and remembers the language (see "The rescue crew's page" above).
+- River gauge readings outside the region are ignored, and only the newest reading per station is kept, so one noisy station cannot crowd out the rest.
+
+### 12. The next shift gets a sheet of paper
+
+Control rooms keep paper logs, and paper still works when a screen, the network or the power does not. The **🖨 Handover** button in the dashboard header opens a one-page sheet:
+
+- open and assigned incidents, most urgent first, with how long each has waited and an overdue mark when the clock has run out
+- every rescue crew, busy ones first, and how many minutes ago it last shared a position
+- rivers near or above the danger mark, or on course to reach it within six hours; readings that have gone stale are left out, and simulated ones are marked as simulated
+- a notes box, and lines for "handed over by", "received by" and a signature
+
+**Print** sends only the sheet to the printer; the map, the queue and the buttons are hidden by a print stylesheet. The sheet carries place, counts and needs and never a citizen's own words or a sender id. It is correct for the minute it was printed, so file it as the record of that changeover. It is in Hindi and English.
 
 ## Under the hood, with graphs
 
@@ -186,10 +202,6 @@ Read it as: severity moves the score the most; more independent reporters help b
 ### Overdue clock
 
 Thresholds live in `shared/sla.ts`: open incidents warn at 15 minutes and breach at 30 if the score is 75 or more (30 and 60 otherwise); an assigned crew that stays silent warns at 60 and breaches at 120. A sweep Lambda runs every five minutes, and a field called `esc` makes sure each breach alerts once. These are starting values to agree with a control room, not official standards.
-
-### Shift handover sheet
-
-The header's Handover button opens a one-page sheet for the next shift: open and assigned incidents ranked by priority with their waiting time, each crew's last position, and rivers near or above the danger mark. Printing hides the rest of the page. It carries place, counts and needs, never citizens' messages, and has signature lines. Simulated gauge readings are marked as such.
 
 ## Who can do what
 
@@ -269,13 +281,18 @@ npm run docs:data && npm run docs:graphs # regenerate the numbers and graphs in 
 | Area | Tests | What they prove |
 | --- | --- | --- |
 | Core logic (`shared.test.ts`) | 22 | extraction, redaction, scoring, merging, geohash |
-| Roles, SLA, feeds, WhatsApp, offline (`gov.test.ts`) | 18 | dialect words, dismissal, village lookup, signatures, offline queue, overdue and metrics maths |
-| Lambda pipeline (`pipeline.test.ts`) | 15 | the whole flow on a fake AWS: field team flow, role isolation, overdue sweep, rate limit, audit |
+| Roles, SLA, feeds, WhatsApp, offline (`gov.test.ts`) | 20 | dialect words, dismissal, village lookup, signatures, offline queue, overdue and metrics maths |
+| Lambda pipeline (`pipeline.test.ts`) | 24 | the whole flow on a fake AWS: field team flow, role isolation, overdue sweep, rate limit, audit, feed region and de-duplication |
 | Infrastructure (`stack.test.ts`) | 14 | four role groups, only five public methods, five-minute sweep, WAF opt-in, alarms, validated feed map, feed credential, CORS lock-down |
-| Dashboard and phone helpers (`filter`, `csv`, `queue`, `pingrule`, `mfa`, `villages-import`, `logic`) | 35 | queue search, CSV export, single-flight outbox, crew pings, two-step enrolment, village import, crew suggestions and time-to-danger |
+| Gauges, alerts, WhatsApp, voice, model fallback (`gauge`, `alert`, `whatsapp`, `voice`, `llm`) | 48 | gauge states and trend, alert wording in both languages, webhook signature, voice notes, the extractor with a good, bad or missing model |
+| Dashboard and phone helpers (`filter`, `csv`, `queue`, `pingrule`, `mfa`, `villages-import`, `logic`) | 37 | queue search, CSV export, single-flight outbox, crew pings, two-step enrolment, village import, crew suggestions and time-to-danger |
+| "Needs attention" panel (`attention.test.ts`) | 16 | every kind of problem, its red or yellow level, ordering, and the case where the crew list has not loaded |
+| Conveniences (`share`, `live`, `draft`) | 22 | crew brief without citizen text, connection-lost wording, tab title, sound switch, saved report draft and its expiry |
+| Crew page helpers (`crewhelp.test.ts`) | 5 | which jobs are new, "N min ago" in both languages, tab title |
+| Shift handover (`handover.test.ts`) | 9 | ranking, closed incidents left out, overdue marks, crew order, which rivers are listed, simulated marking, signature lines, place names inserted as text not markup |
 | Accuracy kit and feed adapter (`kit.test.ts`) | 12 | CSV parsing, label normalisation, confidence intervals, labeler agreement, foreign gauge feeds mapped without inventing values |
 
-On top of these, `npm run e2e` runs 20 Playwright browser tests against the built site in demo mode (ranked queue, search and filters, crew suggestions, dialogs, surge, and the citizen page keeping a report offline and sending it when the network returns, and saying so when it is rate-limited, the crew page announcing a new job, and the printable handover sheet). They run in CI and need no AWS.
+On top of these, `npm run e2e` runs 20 Playwright browser tests against the built site in demo mode (ranked queue, search and filters, the attention panel, crew suggestions, sharing a brief, dialogs, keys, surge and the printable handover sheet; the citizen page keeping a report offline, a saved draft surviving a reload, a rate-limited send; the crew page announcing a new job and remembering the language). They run in CI and need no AWS.
 
 What the tests do **not** cover: a live AWS account, real WhatsApp traffic, real phones' GPS, or any real flood message. The pipeline tests run on fakes.
 
@@ -316,10 +333,11 @@ What this proves: same answers on those inputs, including rounding edges (JavaSc
 
 ```
 shared/     code used by Lambdas, the dashboard and tests (geohash, gazetteer, redaction,
-            extractor, scoring, SLA and metrics, alert wording, gauge simulator)
+            extractor, scoring, SLA and metrics, attention rules, alert wording, gauge simulator)
 backend/    Lambda handlers: ingest, voice, extract, api, gauge, whatsapp, sla (+ lib: intake, auth, feed, wa)
 infra/      AWS CDK stack (TypeScript)
-web/        3D dispatcher dashboard (Three.js + Vite), offline citizen report page, rescue-crew page
+web/        3D dispatcher dashboard (Three.js + Vite) with the attention panel and printable handover sheet,
+            offline citizen report page (saved draft), rescue-crew page (new-job alerts)
 docs/       pilot plan, deploy checklist, runbook, security, privacy, WhatsApp, pitch, demo script, assets
 dotnet/     C# (.NET 8) port of score, SLA, distance, time-to-danger and crew ranking, plus a conformance runner
 conformance/ test vectors generated from the TypeScript (the C# port must reproduce every one)
@@ -378,4 +396,6 @@ If Bedrock access or the model id is wrong, the system keeps working on the rule
 - SMS delivery in India requires DLT registration with SNS; email alerts work immediately.
 - The benchmark set is author-written; real accuracy is measured in a pilot (`docs/PILOT.md`).
 - Crew location is only as good as the phone and the crew's choice to share it. The battery-saving ping rule (about every 25 s when moving, every 3 min when still) has not been tried on real phones. The overdue thresholds (15/30 and 30/60 minutes, 60/120 for a silent crew) are starting values to agree with the control room, not standards.
+- The conveniences (new-job vibration and wake lock on the crew page, the beep, the print layout of the handover sheet) are tested in code and in a desktop browser, not yet on real phones or a real printer. The Hindi wording has not been reviewed by a native speaker.
+- The attention panel, the handover sheet and the other conveniences show on a deployed site only after it is redeployed (`npm run deploy`).
 - Next: resource-aware team suggestions, IVR / missed-call intake, district-boundary heatmap, a list screen for unplaced reports.
