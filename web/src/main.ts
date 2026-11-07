@@ -3,6 +3,7 @@ import type { Alert, Gauge, Inc, Need, Team, Wrong } from '../../shared/types'
 import { WRONGS } from '../../shared/types'
 import { sla } from '../../shared/sla'
 import { filt, type Mode } from './filter'
+import { toCsv } from './csv'
 import { inBihar } from '../../shared/geo'
 import { connect, Expired, type Api, type Pin, type St } from './api'
 import type { Cfg } from './auth'
@@ -339,6 +340,15 @@ async function main(): Promise<void> {
         ...WRONGS.filter((w) => m.fb.wrong[w]).map((w) => row('  ✖ ' + T.wrong[w], String(m.fb.wrong[w]))),
       )
       const card = h('div', 'card', x, h('h2', '', T.rtitle), tb, h('small', 'mu', T.rnote))
+      const cs = h('button', 'btn', '⬇ ' + T.cexport)
+      cs.onclick = () => {
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(new Blob([toCsv(incs, Date.now())], { type: 'text/csv' }))
+        a.download = 'baadhmitra-incidents.csv'
+        a.click()
+        URL.revokeObjectURL(a.href)
+      }
+      card.append(cs)
       if (can('admin')) {
         const dl = h('button', 'btn', '⬇ ' + T.rexport)
         dl.onclick = async () => {

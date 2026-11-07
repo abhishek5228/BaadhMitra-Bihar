@@ -3,9 +3,9 @@ import { merge } from '../shared/score'
 import type { Inc, Rep } from '../shared/types'
 import { filt } from '../web/src/filter'
 
-const rep = (place: string, needs: Rep['needs'], sev = 3): Rep => ({ place, lat: 25.6, lon: 85.1, depth: null, ppl: 4, needs, vul: false, sev, conf: 0.9, src: 'rule' })
+const rep = (place: string, needs: Rep['needs'], sev: Rep['sev'] = 3): Rep => ({ place, lat: 25.6, lon: 85.1, depth: null, ppl: 4, needs, vul: false, sev, conf: 0.9, src: 'rule' })
 const T0 = 1_700_000_000_000
-const mk = (place: string, needs: Rep['needs'], t: number, sev = 3): Inc => merge(null, rep(place, needs, sev), 'r' + place, 'g' + place, t)
+const mk = (place: string, needs: Rep['needs'], t: number, sev: Rep['sev'] = 3): Inc => merge(null, rep(place, needs, sev), 'r' + place, 'g' + place, t)
 
 describe('queue search and filters', () => {
   const now = T0 + 2 * 3600_000
