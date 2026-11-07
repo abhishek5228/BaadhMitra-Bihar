@@ -257,7 +257,7 @@ npm run docs:data && npm run docs:graphs # regenerate the numbers and graphs in 
 | Dashboard and phone helpers (`filter`, `csv`, `queue`, `pingrule`, `mfa`, `villages-import`, `logic`) | 35 | queue search, CSV export, single-flight outbox, crew pings, two-step enrolment, village import, crew suggestions and time-to-danger |
 | Accuracy kit and feed adapter (`kit.test.ts`) | 12 | CSV parsing, label normalisation, confidence intervals, labeler agreement, foreign gauge feeds mapped without inventing values |
 
-On top of these, `npm run e2e` runs 9 Playwright browser tests against the built site in demo mode (ranked queue, search and filters, crew suggestions, dialogs, surge, and the citizen page keeping a report offline and sending it when the network returns). They run in CI and need no AWS.
+On top of these, `npm run e2e` runs 10 Playwright browser tests against the built site in demo mode (ranked queue, search and filters, crew suggestions, dialogs, surge, and the citizen page keeping a report offline and sending it when the network returns, and saying so when it is rate-limited). They run in CI and need no AWS.
 
 What the tests do **not** cover: a live AWS account, real WhatsApp traffic, real phones' GPS, or any real flood message. The pipeline tests run on fakes.
 
