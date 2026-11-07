@@ -10479,6 +10479,71 @@
    },
    "now": 1800000000000,
    "out": 39
+  },
+  {
+   "in": {
+    "sev": 3,
+    "n": 1,
+    "ppl": 0,
+    "vul": false,
+    "needs": [],
+    "last": 1800000000000,
+    "status": "open"
+   },
+   "now": 1800000000000,
+   "out": 44
+  },
+  {
+   "in": {
+    "sev": 3,
+    "n": 3,
+    "ppl": 40,
+    "vul": false,
+    "needs": [],
+    "last": 1799913600000,
+    "status": "open"
+   },
+   "now": 1800000000000,
+   "out": 49
+  },
+  {
+   "in": {
+    "sev": 3,
+    "n": 7,
+    "ppl": 41,
+    "vul": false,
+    "needs": [],
+    "last": 1799827200000,
+    "status": "open"
+   },
+   "now": 1800000000000,
+   "out": 41
+  },
+  {
+   "in": {
+    "sev": 3,
+    "n": 15,
+    "ppl": 1000,
+    "vul": false,
+    "needs": [],
+    "last": 1799280000000,
+    "status": "assigned"
+   },
+   "now": 1800000000000,
+   "out": 29
+  },
+  {
+   "in": {
+    "sev": 3,
+    "n": 0,
+    "ppl": 0,
+    "vul": false,
+    "needs": [],
+    "last": 1800000000000,
+    "status": "open"
+   },
+   "now": 1800000000000,
+   "out": 39
   }
  ],
  "sla": [
@@ -20681,6 +20746,142 @@
     "why": null,
     "mins": 0
    }
+  },
+  {
+   "in": {
+    "status": "open",
+    "score": 74,
+    "first": 1799998200000,
+    "opn": null,
+    "asg": null,
+    "fts": null,
+    "last": 1799998200000
+   },
+   "now": 1800000000000,
+   "out": {
+    "lvl": 1,
+    "why": "unassigned",
+    "mins": 30
+   }
+  },
+  {
+   "in": {
+    "status": "open",
+    "score": 74,
+    "first": 1799998200001,
+    "opn": null,
+    "asg": null,
+    "fts": null,
+    "last": 1799998200001
+   },
+   "now": 1800000000000,
+   "out": {
+    "lvl": 0,
+    "why": "unassigned",
+    "mins": 29
+   }
+  },
+  {
+   "in": {
+    "status": "open",
+    "score": 75,
+    "first": 1799999100000,
+    "opn": null,
+    "asg": null,
+    "fts": null,
+    "last": 1799999100000
+   },
+   "now": 1800000000000,
+   "out": {
+    "lvl": 1,
+    "why": "unassigned",
+    "mins": 15
+   }
+  },
+  {
+   "in": {
+    "status": "open",
+    "score": 75,
+    "first": 1799998200000,
+    "opn": null,
+    "asg": null,
+    "fts": null,
+    "last": 1799998200000
+   },
+   "now": 1800000000000,
+   "out": {
+    "lvl": 2,
+    "why": "unassigned",
+    "mins": 30
+   }
+  },
+  {
+   "in": {
+    "status": "open",
+    "score": 74,
+    "first": 1799996400000,
+    "opn": null,
+    "asg": null,
+    "fts": null,
+    "last": 1799996400000
+   },
+   "now": 1800000000000,
+   "out": {
+    "lvl": 2,
+    "why": "unassigned",
+    "mins": 60
+   }
+  },
+  {
+   "in": {
+    "status": "assigned",
+    "score": 10,
+    "first": 1799996400000,
+    "opn": null,
+    "asg": null,
+    "fts": null,
+    "last": 1799996400000
+   },
+   "now": 1800000000000,
+   "out": {
+    "lvl": 1,
+    "why": "silent",
+    "mins": 60
+   }
+  },
+  {
+   "in": {
+    "status": "assigned",
+    "score": 10,
+    "first": 1799992800001,
+    "opn": null,
+    "asg": null,
+    "fts": null,
+    "last": 1799992800001
+   },
+   "now": 1800000000000,
+   "out": {
+    "lvl": 1,
+    "why": "silent",
+    "mins": 119
+   }
+  },
+  {
+   "in": {
+    "status": "assigned",
+    "score": 10,
+    "first": 1799992800000,
+    "opn": null,
+    "asg": null,
+    "fts": null,
+    "last": 1799992800000
+   },
+   "now": 1800000000000,
+   "out": {
+    "lvl": 2,
+    "why": "silent",
+    "mins": 120
+   }
   }
  ],
  "trend": [
@@ -28862,6 +29063,67 @@
      "id": "T2",
      "km": 41.3,
      "eta": 124,
+     "busy": false,
+     "stale": false
+    }
+   ]
+  },
+  {
+   "in": {
+    "inc": {
+     "lat": 25.6,
+     "lon": 85.1
+    },
+    "teams": [],
+    "max": 3
+   },
+   "now": 1800000000000,
+   "out": []
+  },
+  {
+   "in": {
+    "inc": {
+     "lat": 25.6,
+     "lon": 85.1
+    },
+    "teams": [
+     {
+      "id": "A",
+      "lat": 25.7,
+      "lon": 85.2,
+      "ts": 1799999940000,
+      "busy": false
+     },
+     {
+      "id": "B",
+      "lat": 25.7,
+      "lon": 85.2,
+      "ts": 1799999940000,
+      "busy": false
+     },
+     {
+      "id": "C",
+      "lat": 25.7,
+      "lon": 85.2,
+      "ts": 0,
+      "busy": false
+     }
+    ],
+    "max": 3
+   },
+   "now": 1800000000000,
+   "out": [
+    {
+     "id": "A",
+     "km": 15,
+     "eta": 45,
+     "busy": false,
+     "stale": false
+    },
+    {
+     "id": "B",
+     "km": 15,
+     "eta": 45,
      "busy": false,
      "stale": false
     }
