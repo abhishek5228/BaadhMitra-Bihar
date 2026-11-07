@@ -152,3 +152,9 @@ blockquote small { color: var(--mu); font-size: 11px; }
 .fbk .chip.on { border-color: var(--ok); }
 .hide { display: none !important; }
 .mu { color: var(--mu); }
+
+.qbar { margin: 6px 0 8px; }
+.find { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(255, 255, 255, 0.06); color: inherit; font: inherit; font-size: 13px; }
+.tabs { display: flex; gap: 6px; margin-top: 6px; }
+.tab { border: 0; color: inherit; cursor: pointer; font-family: inherit; }
+.tab.on { background: #4da3ff; color: #06101f; font-weight: 700; }

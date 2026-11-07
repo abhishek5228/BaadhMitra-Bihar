@@ -2,6 +2,7 @@ import './style.css'
 import type { Alert, Gauge, Inc, Need, Team, Wrong } from '../../shared/types'
 import { WRONGS } from '../../shared/types'
 import { sla } from '../../shared/sla'
+import { filt, type Mode } from './filter'
 import { inBihar } from '../../shared/geo'
 import { connect, Expired, type Api, type Pin, type St } from './api'
 import type { Cfg } from './auth'
@@ -46,6 +47,8 @@ async function main(): Promise<void> {
   let tms: Team[] = []
   let st: St = { reports: 0, incidents: 0, rule: 0, review: 0, dedup: 0, unpl: 0 }
   let sel = ''
+  let qtxt = ''
+  let mode: Mode = 'all'
   let pin: Pin | undefined
   const seen = new Set<string>()
   let first = true
@@ -116,12 +119,33 @@ async function main(): Promise<void> {
   }
 
   // ------------------------------------------------------------------ queue
+  // Built once so typing is never interrupted by the 20-second refresh.
+  const qin = h('input', 'find') as HTMLInputElement
+  qin.type = 'search'
+  qin.setAttribute('aria-label', 'search')
+  qin.oninput = () => {
+    qtxt = qin.value
+    drawQueue()
+    qin.focus()
+  }
+  const tabs: [Mode, HTMLElement][] = (['all', 'late', 'free'] as Mode[]).map((m) => {
+    const b = h('button', 'chip tab' + (m === 'all' ? ' on' : ''), m)
+    b.onclick = () => {
+      mode = m
+      for (const [k, x] of tabs) x.classList.toggle('on', k === m)
+      drawQueue()
+    }
+    return [m, b] as [Mode, HTMLElement]
+  })
+  const qbar = h('div', 'qbar', qin, h('div', 'tabs', ...tabs.map(([, b]) => b)))
   function drawQueue(): void {
-    if (!changed('q', [lang, sel, als.map((a) => a.id), incs.map((i) => [i.id, i.score, i.n, i.ppl, i.status, i.review, ago(i.last), sla(i, Date.now()).lvl, Math.floor(sla(i, Date.now()).mins / 5)])])) return
+    if (!changed('q', [lang, sel, qtxt, mode, als.map((a) => a.id), incs.map((i) => [i.id, i.score, i.n, i.ppl, i.status, i.review, ago(i.last), sla(i, Date.now()).lvl, Math.floor(sla(i, Date.now()).mins / 5)])])) return
     const keep = left.querySelector('.list')?.scrollTop ?? 0 // a refresh must not yank the list back to the top
     const list = h('div', 'list')
+    const shown = filt(incs, qtxt, mode, Date.now())
     if (!incs.length) list.append(h('p', 'empty', T.none))
-    for (const i of incs) {
+    else if (!shown.length) list.append(h('p', 'empty', T.noMatch))
+    for (const i of shown) {
       const row = h(
         'button',
         'row' + (i.id === sel ? ' on' : ''),
@@ -142,8 +166,12 @@ async function main(): Promise<void> {
       b.append(s)
       gl.append(b)
     }
-    put(left, h('h2', '', T.queue), list, als.length ? h('h2', '', T.alerts) : null, als.length ? gl : null)
+    const had = document.activeElement === qin
+    qin.placeholder = T.find
+    for (const [m, b] of tabs) b.textContent = { all: T.fAll, late: T.fLate, free: T.fFree }[m]
+    put(left, h('h2', '', T.queue), qbar, list, als.length ? h('h2', '', T.alerts) : null, als.length ? gl : null)
     list.scrollTop = keep
+    if (had) qin.focus()
   }
 
   function slaChip(i: Inc): HTMLElement | null {
