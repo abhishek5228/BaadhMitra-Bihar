@@ -117,7 +117,15 @@ export class BaadhMitraStack extends cdk.Stack {
     })
 
     // ---------------------------------------------------------------- functions
-    const env = { TBL: tbl.tableName, QURL: que.queueUrl, Q_ARN: que.queueArn, DLQ_ARN: dlq.queueArn, BKT: bkt.bucketName, TOPIC: top.topicArn, MODEL: model, FEED: feed, FEED_MAP: feedMap, CORS_ORIGIN: origin, SALT: cdk.Fn.select(2, cdk.Fn.split('/', this.stackId)), WA_SECRET: waSecret.secretArn }
+    // Only when an official feed is configured: an optional API-key header for it. Fill in after the agency issues a key.
+    const feedKey = feed
+      ? new sm.Secret(this, 'FeedKey', {
+          secretName: 'baadhmitra/gauge-feed',
+          description: 'Optional credential for the gauge feed: {"header":"x-api-key","value":"..."}. Leave empty if the feed is open.',
+          secretStringValue: cdk.SecretValue.unsafePlainText(JSON.stringify({ header: '', value: '' })),
+        })
+      : undefined
+    const env = { TBL: tbl.tableName, QURL: que.queueUrl, Q_ARN: que.queueArn, DLQ_ARN: dlq.queueArn, BKT: bkt.bucketName, TOPIC: top.topicArn, MODEL: model, FEED: feed, FEED_MAP: feedMap, FEED_AUTH: feedKey?.secretArn ?? '', CORS_ORIGIN: origin, SALT: cdk.Fn.select(2, cdk.Fn.split('/', this.stackId)), WA_SECRET: waSecret.secretArn }
     const fn = (name: string, entry: string, handler: string, o: { mem?: number; secs?: number } = {}) =>
       new NodejsFunction(this, name, {
         entry: path.join(ROOT, 'backend', entry),
@@ -149,6 +157,7 @@ export class BaadhMitraStack extends cdk.Stack {
     bkt.grantPut(fWa)
     que.grantSendMessages(fWa)
     waSecret.grantRead(fWa)
+    feedKey?.grantRead(fGa)
     bkt.grantRead(fApi)
     bkt.grantReadWrite(fVs)
     bkt.grantRead(fVd)
@@ -337,6 +346,7 @@ export class BaadhMitraStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ApiUrl', { value: rest.url })
     new cdk.CfnOutput(this, 'UserPoolId', { value: pool.userPoolId })
     new cdk.CfnOutput(this, 'ClientId', { value: client.userPoolClientId })
+    if (feedKey) new cdk.CfnOutput(this, 'FeedSecret', { value: feedKey.secretName, description: 'put the feed API key here if the agency issues one, see docs/DATA-REQUEST.md' })
     new cdk.CfnOutput(this, 'WaSecret', { value: waSecret.secretName, description: 'fill in after Meta approval, see docs/WHATSAPP.md' })
     new cdk.CfnOutput(this, 'SiteUrl', { value: 'https://' + cdn.distributionDomainName })
     new cdk.CfnOutput(this, 'TopicArn', { value: top.topicArn })

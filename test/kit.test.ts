@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { adapt, normalize, parseMap } from '../backend/lib/feed'
+import { adapt, authHeaders, normalize, parseMap } from '../backend/lib/feed'
 import { agree, parseCsv, scoreOne, toLabs, wilson } from '../eval/score'
 import { rulex } from '../shared/extract'
 
@@ -63,5 +63,14 @@ describe('gauge feed adapter', () => {
     expect(parseMap('{bad')).toBeNull()
     expect(parseMap('{"id":"a"}')).toBeNull()
     expect(parseMap('{"id":"a","lvl":"b"}')).toMatchObject({ id: 'a' })
+  })
+})
+
+describe('gauge feed credentials', () => {
+  it('builds one header from the secret', () => {
+    expect(authHeaders('{"header":"x-api-key","value":"abc"}')).toEqual({ 'x-api-key': 'abc' })
+  })
+  it('returns nothing for empty, malformed or unsafe secrets', () => {
+    for (const bad of [undefined, '', '{', '{"header":"","value":""}', '{"header":"x-api-key"}', '{"header":"Host","value":"evil"}', '{"header":"bad header","value":"x"}', '{"header":"x-k","value":"a\\r\\nSet-Cookie: y"}']) expect(authHeaders(bad)).toEqual({})
   })
 })

@@ -110,3 +110,22 @@ export function parseMap(raw: string | undefined): FeedMap | null {
     return null
   }
 }
+
+const BLOCKED = new Set(['host', 'content-length', 'transfer-encoding', 'connection', 'cookie'])
+
+/**
+ * Turn the secret JSON {"header": "x-api-key", "value": "..."} into request headers.
+ * Anything malformed or unsafe yields no headers rather than a half-built request.
+ */
+export function authHeaders(raw: string | undefined): Record<string, string> {
+  if (!raw) return {}
+  try {
+    const o = JSON.parse(raw) as { header?: unknown; value?: unknown }
+    const h = typeof o.header === 'string' ? o.header.trim() : ''
+    const v = typeof o.value === 'string' ? o.value : ''
+    if (!h || !v || !/^[A-Za-z0-9-]{1,60}$/.test(h) || BLOCKED.has(h.toLowerCase()) || /[\r\n]/.test(v) || v.length > 2000) return {}
+    return { [h]: v }
+  } catch {
+    return {}
+  }
+}

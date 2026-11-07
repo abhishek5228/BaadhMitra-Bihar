@@ -79,6 +79,17 @@ describe('foreign gauge feed mapping', () => {
   })
 })
 
+describe('gauge feed credential', () => {
+  it('exists only when an official feed is configured and is readable by the Lambdas that need secrets', () => {
+    t.resourcePropertiesCountIs('AWS::SecretsManager::Secret', { Name: 'baadhmitra/gauge-feed' }, 0)
+    const a = new cdk.App({ context: { 'aws:cdk:bundling-stacks': [], gaugeFeedUrl: 'https://example.gov/g.json' } })
+    const f = Template.fromStack(new BaadhMitraStack(a, 'F', { env: { account: '111111111111', region: 'ap-southeast-2' } }))
+    f.resourcePropertiesCountIs('AWS::SecretsManager::Secret', { Name: 'baadhmitra/gauge-feed' }, 1)
+    const pol = JSON.stringify(f.findResources('AWS::IAM::Policy'))
+    expect(pol.split('secretsmanager:GetSecretValue').length - 1).toBeGreaterThanOrEqual(2) // whatsapp + feed
+  })
+})
+
 describe('CORS lock-down', () => {
   it('defaults to open for the demo and restricts to one origin when asked', () => {
     t.hasResourceProperties('AWS::Lambda::Function', { Environment: { Variables: Match.objectLike({ CORS_ORIGIN: '*' }) } })

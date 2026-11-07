@@ -34,8 +34,9 @@ Hindi version: `docs/outreach/EMAIL-HI.md`.
 2. Write a map (see `docs/feed-map.example.json`): dotted paths for each value, a `scale` if units differ (e.g. `0.01` for cm to m), and a `stations` table for anything the feed lacks, copied from the agency's official station list.
 3. Check it: `npm run feed:check -- sample.json map.json`. Fix paths until readings look right and nothing important is dropped.
 4. Deploy (works in Windows CMD): `npx cdk deploy -c gaugeFeedUrl=https://your-feed-url -c gaugeFeedMapFile=map.json`. Invalid JSON in the map stops the deploy before anything changes.
-5. Watch the dashboard: real stations show without `sim`, and a `FeedDown` alarm tells you if the source goes quiet.
+5. If the agency issued a key, store it in the `baadhmitra/gauge-feed` secret (see Limits).
+6. Watch the dashboard: real stations show without `sim`, and a `FeedDown` alarm tells you if the source goes quiet.
 
 ## Limits
-- Feeds that need a login or API key are not supported yet; use an agency-provided proxy URL or add the key handling first.
+- Feeds that need a single API-key header are supported: when a feed URL is set the stack creates the secret `baadhmitra/gauge-feed`. Put `{"header":"x-api-key","value":"<key>"}` in it (AWS console or `aws secretsmanager put-secret-value`). OAuth flows, signed requests and per-request tokens are not supported.
 - Until a real feed is connected, do not describe the river levels in this project as real.
