@@ -128,10 +128,10 @@ describe('citizen report page', async () => {
     const offline = await q.flush(async () => {
       throw new Error('offline')
     })
-    expect(offline).toEqual({ sent: 0, left: 2 })
+    expect(offline).toEqual({ sent: 0, left: 2, failed: 0 })
     const got: string[] = []
     const online = await q.flush(async (i) => void got.push(i.text))
-    expect(online).toEqual({ sent: 2, left: 0 })
+    expect(online).toEqual({ sent: 2, left: 0, failed: 0 })
     expect(got).toHaveLength(2)
   })
 })
