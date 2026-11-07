@@ -72,6 +72,9 @@ describe('needs attention: edges and robustness', () => {
   it('a crew position from the future or a missing one does not count as recent', () => {
     expect(run({ incs: [inc({})], teams: [{ ...crew, ts: 0 }] })[0]).toMatchObject({ kind: 'nocrew' })
   })
+  it('says nothing about crews when the crew list could not be loaded', () => {
+    expect(run({ incs: [inc({})], teams: null })).toEqual([])
+  })
   it('does not change what it is given', () => {
     const incs = [inc({ first: NOW - 90 * MIN }), inc({ id: 'b', first: NOW - 40 * MIN })]
     const before = JSON.stringify(incs)

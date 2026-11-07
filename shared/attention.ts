@@ -22,7 +22,7 @@ const ORDER: Kind[] = ['unassigned', 'silent', 'nocrew', 'rising', 'soon', 'unpl
  * What needs a human right now. Pure and cheap, so the dashboard recomputes it on every refresh.
  * It only points at problems the data already shows; it fixes nothing by itself and invents nothing.
  */
-export function attention(x: { incs: Inc[]; gauges: Gauge[]; teams: Team[]; unplaced: number; now: number }): Issue[] {
+export function attention(x: { incs: Inc[]; gauges: Gauge[]; teams: Team[] | null; unplaced: number; now: number }): Issue[] {
   const out: Issue[] = []
   const live = x.incs.filter((i) => i.status === 'open' || i.status === 'assigned')
   const rows = live.map((i) => ({ i, s: sla(i, x.now) }))
@@ -36,9 +36,10 @@ export function attention(x: { incs: Inc[]; gauges: Gauge[]; teams: Team[]; unpl
   if (so.length) out.push({ kind: 'soon', lvl: 1, n: so.length, ref: worst(so) })
 
   // open incidents and nobody who has shared a recent position: dispatch would be blind
-  const fresh = x.teams.filter((t) => t.ts && x.now - t.ts <= FRESH_MS).length
+  // teams === null means the crew list could not be loaded: unknown is not the same as nobody, so say nothing
+  const fresh = (x.teams ?? []).filter((t) => t.ts && x.now - t.ts <= FRESH_MS).length
   const open = rows.filter((r) => r.i.status === 'open')
-  if (open.length && !fresh) out.push({ kind: 'nocrew', lvl: 2, n: open.length, ref: worst(open) })
+  if (x.teams && open.length && !fresh) out.push({ kind: 'nocrew', lvl: 2, n: open.length, ref: worst(open) })
 
   const hrs = x.gauges.map((g) => hoursToDanger(g)).filter((h): h is number => h !== null && h <= RISING_WITHIN)
   if (hrs.length) out.push({ kind: 'rising', lvl: Math.min(...hrs) <= 2 ? 2 : 1, n: hrs.length, hrs: Math.min(...hrs) })
