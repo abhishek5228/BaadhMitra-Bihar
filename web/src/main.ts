@@ -8,6 +8,7 @@ import { toCsv } from './csv'
 import { suggest } from '../../shared/suggest'
 import { hoursToDanger } from '../../shared/trend'
 import { chunk } from './auth'
+import { brief, mapLink, waLink } from './share'
 import { inBihar } from '../../shared/geo'
 import { connect, Expired, type Api, type Pin, type St } from './api'
 import type { Cfg } from './auth'
@@ -363,6 +364,24 @@ async function main(): Promise<void> {
       }
     }
     const fb = feedbackBox(i)
+    const text = brief(i, lang)
+    const lnk = (label: string, href: string): HTMLAnchorElement => {
+      const a = h('a', 'btn ghost', label) as HTMLAnchorElement
+      a.href = href
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+      return a
+    }
+    const copy = h('button', 'btn ghost', '📋 ' + T.share.copy)
+    copy.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(text)
+        say(T.share.copied)
+      } catch {
+        say(T.share.fail, true)
+      }
+    }
+    const shr = h('div', 'shr', lnk('📍 ' + T.share.map, mapLink(i.lat, i.lon)), copy, lnk('💬 ' + T.share.wa, waLink(text)))
     const sn = h('div', 'snips')
     for (const s of [...i.snips].reverse()) sn.append(h('blockquote', '', h('p', '', s.t), h('small', '', `${ago(s.ts)} · ${s.src === 'llm' ? 'AI' : 'rules'} · ${Math.round(s.conf * 100)}%`)))
     const score = h('div', 'big', String(i.score))
@@ -371,6 +390,7 @@ async function main(): Promise<void> {
       right,
       x,
       h('div', 'hd', score, h('div', '', h('h2', '', i.place), h('small', '', i.status === 'assigned' ? `${T.assigned}: ${i.team ?? ''}` : T.open))),
+      shr,
       fld(T.reports, `${i.n} ${T.reporters} (${i.raw})`),
       fld(T.people, i.ppl ? String(i.ppl) : '—'),
       i.vul ? h('div', 'flag', '⚠ ' + T.vul) : null,
