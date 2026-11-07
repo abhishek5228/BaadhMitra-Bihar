@@ -13,6 +13,7 @@
     "deploy": "npm run web:build && cdk deploy --require-approval never",
     "eval": "tsx eval/run.ts",
     "eval:ind": "tsx eval/score.ts",
+    "e2e": "playwright test",
     "feed:check": "tsx scripts/feed-check.ts",
     "villages": "tsx scripts/villages.ts",
     "loadtest": "tsx scripts/loadtest.ts",
@@ -32,6 +33,7 @@
     "@aws-sdk/s3-request-presigner": "^3.700.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@types/aws-lambda": "^8.10.145",
     "@types/node": "^22.0.0",
     "@types/three": "^0.170.0",
