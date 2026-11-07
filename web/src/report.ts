@@ -92,9 +92,16 @@ async function main(): Promise<void> {
   const send = h('button', 'btn go', '📨 सूचना भेजें / Send') as HTMLButtonElement
   send.type = 'button'
 
+  let why = 0 // HTTP status of the latest refusal, so a "slow down" is not described as "no network"
   const push = async (i: Item): Promise<void> => {
     if (!net) throw new Error('no api')
-    await net.report(i.text, i.pin)
+    try {
+      await net.report(i.text, i.pin)
+      why = 0
+    } catch (e) {
+      why = (e as { status?: number }).status ?? 0
+      throw e
+    }
   }
   const sweep = async (): Promise<void> => {
     if (!read().length) return
@@ -118,7 +125,8 @@ async function main(): Promise<void> {
         place.value = ppl.value = free.value = ''
         picked.clear()
         chips.querySelectorAll('.chip').forEach((c) => c.classList.remove('on'))
-      } else note('नेटवर्क नहीं है। सूचना फ़ोन में सुरक्षित है, नेटवर्क आते ही अपने-आप जाएगी।')
+      } else if (why === 429) note('इस फ़ोन से बहुत सूचनाएँ आ चुकी हैं। सूचना फ़ोन में सुरक्षित है, कुछ देर बाद अपने-आप जाएगी। आपातकाल में 112 पर कॉल करें।', true)
+      else note('नेटवर्क नहीं है। सूचना फ़ोन में सुरक्षित है, नेटवर्क आते ही अपने-आप जाएगी।')
     } finally {
       send.disabled = false
       drawWait()
