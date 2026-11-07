@@ -50,6 +50,7 @@ async function main(): Promise<void> {
   let gs: Gauge[] = []
   let als: Alert[] = []
   let tms: Team[] = []
+  let tmsOk = false // false until the crew list has loaded once, so a failed load is not read as "no crews"
   let st: St = { reports: 0, incidents: 0, rule: 0, review: 0, dedup: 0, unpl: 0 }
   let sel = ''
   let qtxt = ''
@@ -224,7 +225,7 @@ async function main(): Promise<void> {
   }
 
   function drawQueue(): void {
-    const iss = attention({ incs, gauges: gs, teams: tms, unplaced: st.unpl, now: Date.now() })
+    const iss = attention({ incs, gauges: gs, teams: tmsOk ? tms : null, unplaced: st.unpl, now: Date.now() })
     if (!changed('q', [lang, sel, qtxt, mode, iss, als.map((a) => a.id), incs.map((i) => [i.id, i.score, i.n, i.ppl, i.status, i.review, ago(i.last), sla(i, Date.now()).lvl, Math.floor(sla(i, Date.now()).mins / 5)])])) return
     const keep = left.querySelector('.list')?.scrollTop ?? 0 // a refresh must not yank the list back to the top
     const list = h('div', 'list')
@@ -575,7 +576,10 @@ async function main(): Promise<void> {
   // ------------------------------------------------------------------ data loop
   async function refresh(): Promise<void> {
     try {
-      ;[incs, gs, als, st, tms] = await Promise.all([api.incidents(), api.gauges(), api.alerts(), api.stats(), api.teams().catch(() => [] as Team[])])
+      let got: Team[] | null = null
+      ;[incs, gs, als, st, got] = await Promise.all([api.incidents(), api.gauges(), api.alerts(), api.stats(), api.teams().catch(() => null)])
+      tmsOk = got !== null
+      if (got) tms = got
     } catch (e) {
       if (e instanceof Expired) {
         alert(T.sess)
