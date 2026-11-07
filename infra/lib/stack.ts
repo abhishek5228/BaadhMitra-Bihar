@@ -39,6 +39,8 @@ export class BaadhMitraStack extends cdk.Stack {
     const mapText: string = mapFile ? readFileSync(path.resolve(mapFile), 'utf-8') : (this.node.tryGetContext('gaugeFeedMap') ?? '')
     const feedMap: string = mapText ? JSON.stringify(JSON.parse(mapText)) : '' // fails the deploy early on invalid JSON
     const rps = Number(this.node.tryGetContext('reportRps') ?? 10) // citizen intake throughput; raise for a real flood
+    // Browser origin allowed to call the API and upload audio. '*' keeps the demo working anywhere; for a pilot pass the dashboard origin: -c corsOrigin=https://xxxx.cloudfront.net
+    const origin: string = this.node.tryGetContext('corsOrigin') ?? '*'
     const useWaf = String(this.node.tryGetContext('waf') ?? 'false') === 'true'
 
     // ---------------------------------------------------------------- data
@@ -64,7 +66,7 @@ export class BaadhMitraStack extends cdk.Stack {
       enforceSSL: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
-      cors: [{ allowedMethods: [s3.HttpMethods.PUT], allowedOrigins: ['*'], allowedHeaders: ['*'], maxAge: 3000 }],
+      cors: [{ allowedMethods: [s3.HttpMethods.PUT], allowedOrigins: [origin], allowedHeaders: ['*'], maxAge: 3000 }],
       lifecycleRules: [
         { prefix: 'audio/', expiration: cdk.Duration.days(30) },
         { prefix: 'transcripts/', expiration: cdk.Duration.days(30) },
@@ -115,7 +117,7 @@ export class BaadhMitraStack extends cdk.Stack {
     })
 
     // ---------------------------------------------------------------- functions
-    const env = { TBL: tbl.tableName, QURL: que.queueUrl, Q_ARN: que.queueArn, DLQ_ARN: dlq.queueArn, BKT: bkt.bucketName, TOPIC: top.topicArn, MODEL: model, FEED: feed, FEED_MAP: feedMap, SALT: cdk.Fn.select(2, cdk.Fn.split('/', this.stackId)), WA_SECRET: waSecret.secretArn }
+    const env = { TBL: tbl.tableName, QURL: que.queueUrl, Q_ARN: que.queueArn, DLQ_ARN: dlq.queueArn, BKT: bkt.bucketName, TOPIC: top.topicArn, MODEL: model, FEED: feed, FEED_MAP: feedMap, CORS_ORIGIN: origin, SALT: cdk.Fn.select(2, cdk.Fn.split('/', this.stackId)), WA_SECRET: waSecret.secretArn }
     const fn = (name: string, entry: string, handler: string, o: { mem?: number; secs?: number } = {}) =>
       new NodejsFunction(this, name, {
         entry: path.join(ROOT, 'backend', entry),
@@ -209,11 +211,11 @@ export class BaadhMitraStack extends cdk.Stack {
           '/subscribe/POST': { throttlingRateLimit: 1, throttlingBurstLimit: 3 }, // each call can email a stranger a confirmation
         },
       },
-      defaultCorsPreflightOptions: { allowOrigins: api.Cors.ALL_ORIGINS, allowMethods: ['GET', 'POST', 'OPTIONS'], allowHeaders: ['Content-Type', 'Authorization'] },
+      defaultCorsPreflightOptions: { allowOrigins: origin === '*' ? api.Cors.ALL_ORIGINS : [origin], allowMethods: ['GET', 'POST', 'OPTIONS'], allowHeaders: ['Content-Type', 'Authorization'] },
     })
     // Errors raised by API Gateway itself (wrong or missing key, throttling, validation) must still carry
     // CORS headers, otherwise the browser hides the real status behind a generic network error.
-    const cors = { 'Access-Control-Allow-Origin': "'*'" }
+    const cors = { 'Access-Control-Allow-Origin': `'${origin}'` }
     rest.addGatewayResponse('Gw4xx', { type: api.ResponseType.DEFAULT_4XX, responseHeaders: cors })
     rest.addGatewayResponse('Gw5xx', { type: api.ResponseType.DEFAULT_5XX, responseHeaders: cors })
     const lamIn = new api.LambdaIntegration(fIn)

@@ -23,7 +23,7 @@ An honest description of what protects the system and what does not yet. It is n
 ## Known gaps (do these before a real pilot)
 
 1. **MFA enrolment** is not built into the dashboard (see DEPLOY-INDIA.md).
-2. **CORS** on the public API allows any origin so the demo works anywhere. Restrict it to the CloudFront domain for a pilot.
+2. **CORS** allows any origin by default so the demo works anywhere. For a pilot deploy with `-c corsOrigin=https://<your-cloudfront-domain>` to restrict the API, error responses and audio upload to the dashboard origin.
 3. **Public report endpoint** can be abused with many fake senders from many IPs. The API throttle bounds the damage and the review queue holds low-confidence incidents, but a determined attacker can still add noise. Use the WAF and watch the `RateLimited` and `Unplaced` metrics.
 4. **`/subscribe`** lets anyone ask AWS to send a confirmation email to an address. It is throttled to 1 request per second; consider removing it from the public API and subscribing control-room staff directly.
 5. No independent penetration test, no formal threat model review, no dependency scanning beyond CI.

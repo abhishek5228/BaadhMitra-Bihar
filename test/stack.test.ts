@@ -79,3 +79,15 @@ describe('foreign gauge feed mapping', () => {
   })
 })
 
+describe('CORS lock-down', () => {
+  it('defaults to open for the demo and restricts to one origin when asked', () => {
+    t.hasResourceProperties('AWS::Lambda::Function', { Environment: { Variables: Match.objectLike({ CORS_ORIGIN: '*' }) } })
+    const o = 'https://dash.example.org'
+    const a = new cdk.App({ context: { 'aws:cdk:bundling-stacks': [], corsOrigin: o } })
+    const c = Template.fromStack(new BaadhMitraStack(a, 'C', { env: { account: '111111111111', region: 'ap-southeast-2' } }))
+    c.hasResourceProperties('AWS::Lambda::Function', { Environment: { Variables: Match.objectLike({ CORS_ORIGIN: o }) } })
+    c.hasResourceProperties('AWS::S3::Bucket', { CorsConfiguration: { CorsRules: [Match.objectLike({ AllowedOrigins: [o] })] } })
+    c.hasResourceProperties('AWS::ApiGateway::GatewayResponse', { ResponseParameters: { 'gatewayresponse.header.Access-Control-Allow-Origin': `'${o}'` } })
+  })
+})
+

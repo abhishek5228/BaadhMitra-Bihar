@@ -343,7 +343,7 @@ If Bedrock access or the model id is wrong, the system keeps working on the rule
 - Transcribe has no Maithili or Bhojpuri model, so Hindi is used; confidence drops on heavy dialect and the review queue catches it. The Bhojpuri/Maithili word list is best effort and needs native-speaker review.
 - WhatsApp needs a Meta business account and approval; the webhook is built and tested but has not talked to the real Meta service.
 - River data is simulated until you configure an official feed (and get permission for it). Village-level placement needs a licensed village dataset (`npm run villages`); the shipped index is empty.
-- MFA enrolment is not in the dashboard yet; CORS is open for demo convenience; no independent penetration test. See `docs/SECURITY.md` for the full list.
+- MFA enrolment is not in the dashboard yet; CORS is open by default for demo convenience (`-c corsOrigin=...` restricts it); no independent penetration test. See `docs/SECURITY.md` for the full list.
 - SMS delivery in India requires DLT registration with SNS; email alerts work immediately.
 - The benchmark set is author-written; real accuracy is measured in a pilot (`docs/PILOT.md`).
 - Crew location is only as good as the phone and the crew's choice to share it. The overdue thresholds (15/30 and 30/60 minutes, 60/120 for a silent crew) are starting values to agree with the control room, not standards.

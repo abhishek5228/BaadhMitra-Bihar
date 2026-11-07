@@ -134,7 +134,7 @@ export function emf(name: string, value: number, unit = 'Count'): void {
 
 const H = {
   'content-type': 'application/json',
-  'access-control-allow-origin': '*',
+  'access-control-allow-origin': env('CORS_ORIGIN', '*'),
   'cache-control': 'no-store',
 }
 
