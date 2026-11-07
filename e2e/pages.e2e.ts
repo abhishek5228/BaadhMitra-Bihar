@@ -71,6 +71,22 @@ test.describe('staff dashboard (demo mode)', () => {
     await expect(page.locator('.dispatch select')).toHaveValue(name)
   })
 
+  test('the attention panel follows the language and updates once a crew is sent', async ({ page }) => {
+    const box = page.locator('.attn')
+    const unassigned = box.locator('button.att', { hasText: /unassigned past the limit/ })
+    await expect(unassigned).toHaveCount(1)
+    const n0 = Number((await unassigned.innerText()).match(/(\d+) unassigned/)?.[1])
+    await unassigned.click() // opens the worst one
+    await page.locator('.dispatch select').selectOption({ index: 1 })
+    await page.getByRole('button', { name: /Dispatch/ }).click()
+    // one fewer overdue-and-unassigned incident (or the item is gone if it was the only one)
+    await expect
+      .poll(async () => (await unassigned.count()) === 0 || Number((await unassigned.innerText()).match(/(\d+) unassigned/)?.[1]) < n0, { timeout: 20_000 })
+      .toBe(true)
+    await page.getByRole('button', { name: 'हिं' }).click()
+    await expect(box).toContainText('ध्यान चाहिए')
+  })
+
   test('the monsoon surge brings in new incidents', async ({ page }) => {
     const before = await page.locator('.row').count()
     await page.getByRole('button', { name: /surge/i }).click()
