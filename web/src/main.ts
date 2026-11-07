@@ -65,6 +65,11 @@ async function main(): Promise<void> {
   const toast = h('div', 'toast hide')
   toast.setAttribute('role', 'status') // read out by screen readers when a message appears
   app.append(stage, top, left, right, comp, bar, toast)
+  // The header wraps onto a second row on narrower screens or with more buttons. Panels below it follow its real height,
+  // otherwise they cover the buttons (found by the browser tests).
+  const fit = (): void => document.documentElement.style.setProperty('--tb', `${Math.ceil(top.getBoundingClientRect().bottom)}px`)
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fit).observe(top)
+  fit()
 
   const world = new World(stage, (id) => pickInc(id))
 
