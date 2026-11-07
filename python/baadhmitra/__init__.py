@@ -74,3 +74,46 @@ def suggest(lat, lon, crews, now, max_n=3):
         out.append({"id": t["id"], "km": js_round(km * 10) / 10, "eta": js_round(eta), "busy": bool(t["busy"]), "stale": stale})
     out.sort(key=lambda s: (s["eta"], s["km"]))  # sort is stable
     return out[:max_n]
+
+
+_B32 = "0123456789bcdefghjkmnpqrstuvwxyz"
+
+
+def geohash(lat, lon, prec=5):
+    """Cell name for a position; precision 5 is about 4.9 km across."""
+    la, lo = [-90.0, 90.0], [-180.0, 180.0]
+    out, bit, idx, even = "", 0, 0, True
+    while len(out) < prec:
+        rng, val = (lo, lon) if even else (la, lat)
+        mid = (rng[0] + rng[1]) / 2
+        if val >= mid:
+            idx, rng[0] = idx * 2 + 1, mid
+        else:
+            idx, rng[1] = idx * 2, mid
+        even = not even
+        bit += 1
+        if bit == 5:
+            out += _B32[idx]
+            bit, idx = 0, 0
+    return out
+
+
+def centre(h):
+    """Middle of a geohash cell as (lat, lon)."""
+    la, lo, even = [-90.0, 90.0], [-180.0, 180.0], True
+    for c in h:
+        v = _B32.index(c)
+        for b in range(4, -1, -1):
+            rng = lo if even else la
+            mid = (rng[0] + rng[1]) / 2
+            rng[0 if (v >> b) & 1 else 1] = mid
+            even = not even
+    return ((la[0] + la[1]) / 2, (lo[0] + lo[1]) / 2)
+
+
+def percentile(a, p):
+    """Nearest-rank percentile of response times, one decimal; None for an empty list."""
+    if not a:
+        return None
+    s = sorted(a)
+    return js_round(s[min(len(s) - 1, math.floor(p * len(s)))] * 10) / 10
