@@ -8,7 +8,7 @@
 Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicated rescue queue on a live 3D map. Rescue crews get their own phone page, and nothing waits unnoticed.
 
 [![CI](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml/badge.svg)](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml)
-![tests](https://img.shields.io/badge/tests-109%20passing-2fbf71)
+![tests](https://img.shields.io/badge/tests-116%20passing-2fbf71)
 ![AWS](https://img.shields.io/badge/AWS-Lambda%20%C2%B7%20SQS%20%C2%B7%20DynamoDB%20%C2%B7%20Bedrock%20%C2%B7%20Cognito-ff9900)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![three.js](https://img.shields.io/badge/3D-three.js-black)
@@ -236,10 +236,10 @@ flowchart LR
 
 ## Tests and evaluation
 
-<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 109 passing tests by area" width="70%"/></p>
+<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 116 passing tests by area" width="70%"/></p>
 
 ```bash
-npm run typecheck && npm test      # 109 tests: core logic, the Lambda pipeline against a fake AWS, roles and audit, WhatsApp signatures, feeds, offline queue, CDK guarantees, accuracy kit
+npm run typecheck && npm test      # 116 tests: core logic, the Lambda pipeline against a fake AWS, roles and audit, WhatsApp signatures, feeds, offline queue, CDK guarantees, accuracy kit
 npm run eval                       # extractor benchmark (add LLM=1 MODEL=<id> to score Bedrock)
 npx cdk synth                      # validates the CloudFormation template
 npm run loadtest -- <api> 200 20 --yes   # load test the public endpoint (use a staging stack)
@@ -254,10 +254,10 @@ npm run docs:data && npm run docs:graphs # regenerate the numbers and graphs in 
 | Roles, SLA, feeds, WhatsApp, offline (`gov.test.ts`) | 18 | dialect words, dismissal, village lookup, signatures, offline queue, overdue and metrics maths |
 | Lambda pipeline (`pipeline.test.ts`) | 15 | the whole flow on a fake AWS: field team flow, role isolation, overdue sweep, rate limit, audit |
 | Infrastructure (`stack.test.ts`) | 14 | four role groups, only five public methods, five-minute sweep, WAF opt-in, alarms, validated feed map, feed credential, CORS lock-down |
-| Dashboard and phone helpers (`filter`, `csv`, `queue`, `pingrule`, `mfa`, `villages-import`) | 28 | queue search, CSV export with formula protection, single-flight offline outbox, battery-aware crew pings, two-step sign-in enrolment, village import |
+| Dashboard and phone helpers (`filter`, `csv`, `queue`, `pingrule`, `mfa`, `villages-import`, `logic`) | 35 | queue search, CSV export, single-flight outbox, crew pings, two-step enrolment, village import, crew suggestions and time-to-danger |
 | Accuracy kit and feed adapter (`kit.test.ts`) | 12 | CSV parsing, label normalisation, confidence intervals, labeler agreement, foreign gauge feeds mapped without inventing values |
 
-On top of these, `npm run e2e` runs 8 Playwright browser tests against the built site in demo mode (ranked queue, search and filters, dialogs, surge, and the citizen page keeping a report offline and sending it when the network returns). They run in CI and need no AWS.
+On top of these, `npm run e2e` runs 9 Playwright browser tests against the built site in demo mode (ranked queue, search and filters, crew suggestions, dialogs, surge, and the citizen page keeping a report offline and sending it when the network returns). They run in CI and need no AWS.
 
 What the tests do **not** cover: a live AWS account, real WhatsApp traffic, real phones' GPS, or any real flood message. The pipeline tests run on fakes.
 
