@@ -1,0 +1,172 @@
+[
+ {
+  "id": "baltara",
+  "name": "Baltara",
+  "river": "Kosi",
+  "lat": 25.57,
+  "lon": 87.2,
+  "lvl": 33.99,
+  "danger": 33.85,
+  "ts": 1725352200000
+ },
+ {
+  "id": "benibad",
+  "name": "Benibad",
+  "river": "Bagmati",
+  "lat": 26.12,
+  "lon": 85.39,
+  "lvl": 49.56,
+  "danger": 48.68,
+  "ts": 1725352200000
+ },
+ {
+  "id": "dumariaghat",
+  "name": "Dumariaghat",
+  "river": "Gandak",
+  "lat": 26.47,
+  "lon": 84.44,
+  "lvl": 62.49,
+  "danger": 62.22,
+  "ts": 1725352200000
+ },
+ {
+  "id": "gandhighat",
+  "name": "Gandhighat, Patna",
+  "river": "Ganga",
+  "lat": 25.62,
+  "lon": 85.2,
+  "lvl": 48.88,
+  "danger": 48.6,
+  "ts": 1725352200000
+ },
+ {
+  "id": "hathidah",
+  "name": "Hathidah",
+  "river": "Ganga",
+  "lat": 25.4,
+  "lon": 85.99,
+  "lvl": 42.18,
+  "danger": 41.76,
+  "ts": 1725352200000
+ },
+ {
+  "id": "kahalgaon",
+  "name": "Kahalgaon",
+  "river": "Ganga",
+  "lat": 25.27,
+  "lon": 87.23,
+  "lvl": 31.66,
+  "danger": 31.09,
+  "ts": 1725352200000
+ },
+ {
+  "id": "khagaria",
+  "name": "Khagaria",
+  "river": "Burhi Gandak",
+  "lat": 25.51,
+  "lon": 86.47,
+  "lvl": 37.41,
+  "danger": 36.58,
+  "ts": 1725352200000
+ },
+ {
+  "id": "kursela",
+  "name": "Kursela",
+  "river": "Kosi",
+  "lat": 25.48,
+  "lon": 87.27,
+  "lvl": 30.66,
+  "danger": 30.0,
+  "ts": 1725352200000
+ },
+ {
+  "id": "basua",
+  "name": "Basua",
+  "river": "Kosi",
+  "lat": 26.28,
+  "lon": 86.78,
+  "lvl": 46.79,
+  "danger": 47.75,
+  "ts": 1725352200000
+ },
+ {
+  "id": "bhagalpur",
+  "name": "Bhagalpur",
+  "river": "Ganga",
+  "lat": 25.24,
+  "lon": 87.01,
+  "lvl": 33.57,
+  "danger": 33.68,
+  "ts": 1725352200000
+ },
+ {
+  "id": "darauli",
+  "name": "Darauli",
+  "river": "Ghagra",
+  "lat": 26.22,
+  "lon": 84.36,
+  "lvl": 60.49,
+  "danger": 60.82,
+  "ts": 1725352200000
+ },
+ {
+  "id": "dheng",
+  "name": "Dheng Bridge",
+  "river": "Bagmati",
+  "lat": 26.59,
+  "lon": 85.48,
+  "lvl": 70.08,
+  "danger": 71.0,
+  "ts": 1725352200000
+ },
+ {
+  "id": "dighaghat",
+  "name": "Dighaghat",
+  "river": "Ganga",
+  "lat": 25.64,
+  "lon": 85.1,
+  "lvl": 49.93,
+  "danger": 50.45,
+  "ts": 1725352200000
+ },
+ {
+  "id": "gangpur",
+  "name": "Gangpur Siswan",
+  "river": "Ghagra",
+  "lat": 26.22,
+  "lon": 84.36,
+  "lvl": 56.25,
+  "danger": 57.04,
+  "ts": 1725352200000
+ },
+ {
+  "id": "maner",
+  "name": "Maner",
+  "river": "Sone",
+  "lat": 25.65,
+  "lon": 84.87,
+  "lvl": 51.38,
+  "danger": 52.0,
+  "ts": 1725352200000
+ },
+ {
+  "id": "munger",
+  "name": "Munger",
+  "river": "Ganga",
+  "lat": 25.37,
+  "lon": 86.47,
+  "lvl": 38.63,
+  "danger": 39.33,
+  "ts": 1725352200000
+ },
+ {
+  "id": "runisaidpur",
+  "name": "Runisaidpur",
+  "river": "Bagmati",
+  "lat": 26.12,
+  "lon": 85.39,
+  "lvl": 54.35,
+  "danger": 55.0,
+  "ts": 1725352200000
+ }
+]

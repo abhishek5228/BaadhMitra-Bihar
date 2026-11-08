@@ -9,3 +9,5 @@ test-results/
 playwright-report/
 dotnet/**/bin/
 dotnet/**/obj/
+__pycache__/
+*.pyc
