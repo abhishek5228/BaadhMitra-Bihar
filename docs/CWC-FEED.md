@@ -17,12 +17,20 @@ cwc.gov.in answers automated downloads with **HTTP 401** (tried from a GitHub ru
 1. Get the day's bulletin PDF in your browser. Two places (file names do not matter, the date is read from inside the PDF):
    - **CWC's flood-forecast account on X, `@CWCOfficial_FF`**, posts "Daily Flood Bulletin issued by CFCR dated DD-MM-YYYY" every day with a Google Drive link to `CFCR_CWC_DFB_DD.MM.YYYY.pdf`. Open the link and download the file. It was still being posted in November 2026.
    - **cwc.gov.in**, page `https://cwc.gov.in/en/daily-flood-bulletin-report-dated-DDMMYYYY` (for example `...-dated-10052025`), which lists the PDF to click.
-2. In the GitHub repository open the `inbox` folder: **Add file → Upload files**, drop the PDF, **Commit changes**.
+2. Put it in `inbox/`. Either on GitHub (open the `inbox` folder, **Add file → Upload files**, drop the PDF, **Commit changes**), or from Windows CMD in the project folder, which copies, commits and pushes in one go:
+
+   ```
+   scripts\cwc-add.cmd C:\Users\abbhi\Downloads\CFCR_CWC_DFB_06.11.2026.pdf
+   ```
+
+   (It pushes to the remote named `mine`; pass another remote name as a second argument. It is written for CMD and has not been run on Windows by its author.)
 3. `.github/workflows/cwc-feed.yml` starts by itself. `scripts/cwc_bulletin.py` reads every PDF in `inbox/`, takes the **newest bulletin by date**, and writes `data/cwc-latest.json` and `data/cwc-latest.meta.json`. A file that is not a bulletin is named and skipped.
 4. It checks the count of Bihar sites against the summary on page 1 and **stops with an error if they disagree** (the layout probably changed), instead of writing a quiet "all clear".
 5. If the result changed, it commits the two data files. The poller picks it up at its next run (every 15 minutes by default).
 
 One upload a day during the flood season is the whole routine. Old PDFs can stay; the newest bulletin by date always wins. A failed run shows red in the Actions tab with the reason.
+
+**Why this is not fully automatic.** The posts on `@CWCOfficial_FF` carry a different Google Drive link every day, and reading them needs X's paid API or a login; cwc.gov.in refuses GitHub's servers; and the live forecast site (`ffs.india-water.gov.in`) has no documented data interface that was found. The proper fix is an official feed, which is what the data request is for.
 
 `scripts/cwc_fetch.py` can look for the bulletin by file-name pattern (`cfcrcwcdfbDD.MM.YYYY.pdf`, then `_0`, `_1`, ...) and refuses anything that is not a PDF. It does not work from GitHub because of the 401; it may work from your own computer: `python scripts\cwc_fetch.py --out inbox\today.pdf`. If CWC lets automated readers in, or gives a data feed, the schedule can come back; the data request in [`DATA-REQUEST.md`](DATA-REQUEST.md) is the proper route.
 
