@@ -8,7 +8,7 @@
 Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicated rescue queue on a live 3D map. Rescue crews get their own phone page, and nothing waits unnoticed.
 
 [![CI](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml/badge.svg)](https://github.com/antrikakashyap/baadhmitra/actions/workflows/ci.yml)
-![tests](https://img.shields.io/badge/tests-229%20passing-2fbf71)
+![tests](https://img.shields.io/badge/tests-235%20passing-2fbf71)
 ![AWS](https://img.shields.io/badge/AWS-Lambda%20%C2%B7%20SQS%20%C2%B7%20DynamoDB%20%C2%B7%20Bedrock%20%C2%B7%20Cognito-ff9900)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![three.js](https://img.shields.io/badge/3D-three.js-black)
@@ -19,7 +19,7 @@ Hindi, Hinglish and dialect voice or text reports become one ranked, de-duplicat
 
 </div>
 
-> **Where it stands:** a complete, working prototype running on the author's own AWS account, built to go into a one-district shadow pilot. It has not yet been used in a real flood and no agency has endorsed it; extraction accuracy on real messages is what the pilot measures, and river levels are simulated (labelled `sim`) until an official feed is connected. The road to a pilot is in [`docs/PILOT.md`](docs/PILOT.md), and the full picture is [at the end of this page](#where-it-stands-and-where-a-pilot-takes-it).
+> **Where it stands:** a complete, working prototype running on the author's own AWS account, built to go into a one-district shadow pilot. It has not yet been used in a real flood and no agency has endorsed it; extraction accuracy on real messages is what the pilot measures, and river levels are simulated (labelled `sim`) until an official feed is connected, though the danger marks they are compared with are the official CWC ones. The road to a pilot is in [`docs/PILOT.md`](docs/PILOT.md), and the full picture is [at the end of this page](#where-it-stands-and-where-a-pilot-takes-it).
 
 ## Contents
 
@@ -265,10 +265,10 @@ flowchart LR
 
 ## Tests and evaluation
 
-<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 229 passing tests by area" width="70%"/></p>
+<p align="center"><img src="docs/assets/g-tests.png" alt="Bar chart of 235 passing tests by area" width="70%"/></p>
 
 ```bash
-npm run typecheck && npm test      # 229 tests: core logic, the Lambda pipeline against a fake AWS, the gauge poller, the WhatsApp webhook, voice notes and the extractor with a good, bad or missing model, roles and audit, feeds, offline queue, CDK guarantees, accuracy kit
+npm run typecheck && npm test      # 235 tests: core logic, the Lambda pipeline against a fake AWS, the gauge poller, the WhatsApp webhook, voice notes and the extractor with a good, bad or missing model, roles and audit, feeds, offline queue, CDK guarantees, accuracy kit
 npm run coverage                   # statement coverage of shared/ and backend/ (about 98%; branches about 87%)
 npm run eval                       # extractor benchmark (add LLM=1 MODEL=<id> to score Bedrock)
 npx cdk synth                      # validates the CloudFormation template
@@ -287,6 +287,7 @@ npm run docs:data && npm run docs:graphs # regenerate the numbers and graphs in 
 | Gauges, alerts, WhatsApp, voice, model fallback (`gauge`, `alert`, `whatsapp`, `voice`, `llm`) | 48 | gauge states and trend, alert wording in both languages, webhook signature, voice notes, the extractor with a good, bad or missing model |
 | Dashboard and phone helpers (`filter`, `csv`, `queue`, `pingrule`, `mfa`, `villages-import`, `logic`) | 37 | queue search, CSV export, single-flight outbox, crew pings, two-step enrolment, village import, crew suggestions and time-to-danger |
 | "Needs attention" panel (`attention.test.ts`) | 16 | every kind of problem, its red or yellow level, ordering, and the case where the crew list has not loaded |
+| Official river marks (`cwc.test.ts`) | 6 | 18 stations, warning always 1 m under danger, unknown station refused, published JSON in step with the code, a codes-and-levels feed turned into full readings |
 | Conveniences (`share`, `live`, `draft`) | 22 | crew brief without citizen text, connection-lost wording, tab title, sound switch, saved report draft and its expiry |
 | Crew page helpers (`crewhelp.test.ts`) | 5 | which jobs are new, "N min ago" in both languages, tab title |
 | Shift handover (`handover.test.ts`) | 9 | ranking, closed incidents left out, overdue marks, crew order, which rivers are listed, simulated marking, signature lines, place names inserted as text not markup |
@@ -389,9 +390,11 @@ If Bedrock access or the model id is wrong, the system keeps working on the rule
 
 ## Where it stands, and where a pilot takes it
 
-BaadhMitra is a working prototype, deployed end to end on AWS and exercised by 229 unit tests and 20 browser tests. This section is the map for judges and for a first district: what is already proven, what needs a partner to prove, and what comes next.
+BaadhMitra is a working prototype, deployed end to end on AWS and exercised by 235 unit tests and 20 browser tests. This section is the map for judges and for a first district: what is already proven, what needs a partner to prove, and what comes next.
 
 ### Proven in the build
+
+- **Official river marks are in.** The warning, danger and highest-flood levels of 18 Bihar stations on the Ganga, Kosi, Gandak, Burhi Gandak, Bagmati, Ghagra and Sone are read from Central Water Commission flood bulletins (`shared/cwc.ts`, with the bulletin named per station) and ship as a ready feed-map table, `docs/cwc-bihar-stations.json`. Every warning mark is exactly 1 m under its danger mark, which is the rule the gauge state already used. What is still simulated is the *level* itself; that arrives with a live feed.
 
 - **The whole pipeline runs:** message, redaction, queue, extraction, merge, score, dashboard, dispatch, crew phone, overdue clock, alert. The pipeline tests run it on a fake AWS; the deployed stack runs it for real.
 - **It degrades instead of failing:** Bedrock down means the rule extractor takes over; a network drop means the phone pages queue their taps; a stale river feed is greyed out and raises no alert.
@@ -404,7 +407,7 @@ Each item below has its tooling built; the missing piece is a partner, not code.
 | Next proof | What is ready | What it needs from a partner |
 | --- | --- | --- |
 | **Accuracy on real messages** | the labeling page, protocol and scorer (`npm run eval:ind`) with confidence intervals | 100+ messages written and labelled by people who did not build the extractor |
-| **Real river levels** | a config-driven feed adapter and `npm run feed:check` | an official gauge feed (CWC or the state water resources department), agreed with the agency |
+| **Real river levels** | a config-driven feed adapter, `npm run feed:check`, and the official station table above, so only the live level feed is missing | an official gauge feed (CWC or the state water resources department), agreed with the agency |
 | **WhatsApp intake at scale** | a signed, tested webhook | a Meta business account and approval |
 | **Village-level placement** | `npm run villages` importer | a licensed village dataset (the shipped index is empty on purpose) |
 | **SMS alerts in India** | SNS wiring | DLT registration; email alerts work today |

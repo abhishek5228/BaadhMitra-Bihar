@@ -31,7 +31,7 @@ Hindi version: `docs/outreach/EMAIL-HI.md`.
 
 ## Wire it in (when you have a feed)
 1. Fetch a sample and save it, e.g. `sample.json`.
-2. Write a map (see `docs/feed-map.example.json`): dotted paths for each value, a `scale` if units differ (e.g. `0.01` for cm to m), and a `stations` table for anything the feed lacks, copied from the agency's official station list.
+2. Write a map (see `docs/feed-map.example.json`): dotted paths for each value, a `scale` if units differ (e.g. `0.01` for cm to m), and a `stations` table for anything the feed lacks, copied from the agency's official station list. A ready table of 18 Bihar stations with the CWC warning and danger marks is in `docs/cwc-bihar-stations.json` (regenerate with `npx tsx scripts/cwc-table.ts`); rename its keys to your feed's station codes and move the positions from nearest-town to the agency's coordinates.
 3. Check it: `npm run feed:check -- sample.json map.json`. Fix paths until readings look right and nothing important is dropped.
 4. Deploy (works in Windows CMD): `npx cdk deploy -c gaugeFeedUrl=https://your-feed-url -c gaugeFeedMapFile=map.json`. Invalid JSON in the map stops the deploy before anything changes.
 5. If the agency issued a key, store it in the `baadhmitra/gauge-feed` secret (see Limits).
