@@ -16,7 +16,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run coverage # tests plus coverage thresholds (vitest.config.ts)
-      - run: npm audit --audit-level=high
+      - run: npm audit --omit=dev --audit-level=high # shipped dependencies; dev-tool advisories are tracked in README
       - run: npm run web:build
       - run: npx cdk synth --quiet
         env:
