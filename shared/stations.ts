@@ -1,6 +1,9 @@
 // River gauge stations used by the early-warning poller and the demo.
-// Coordinates are approximate and `danger` levels are ILLUSTRATIVE placeholders.
+// The danger marks are the official CWC ones (shared/cwc.ts). Coordinates are approximate, and the LEVELS
+// from simlvl() below are simulated and always flagged `sim`.
 // In production the poller reads official levels from a feed (GAUGE_FEED_URL).
+import { ref } from './cwc'
+
 export interface Stn {
   id: string
   name: string
@@ -11,14 +14,12 @@ export interface Stn {
   base: number // typical monsoon-season level used by the simulator
 }
 
-export const STATIONS: Stn[] = [
-  { id: 'gandhighat', name: 'Gandhighat, Patna', river: 'Ganga', lat: 25.62, lon: 85.2, danger: 48.6, base: 46.9 },
-  { id: 'hathidah', name: 'Hathidah', river: 'Ganga', lat: 25.4, lon: 85.99, danger: 41.8, base: 40.2 },
-  { id: 'kursela', name: 'Kursela', river: 'Ganga', lat: 25.48, lon: 87.27, danger: 31.1, base: 29.6 },
-  { id: 'baltara', name: 'Baltara', river: 'Kosi', lat: 25.57, lon: 87.2, danger: 32.0, base: 30.4 },
-  { id: 'basua', name: 'Basua', river: 'Kosi', lat: 26.28, lon: 86.78, danger: 47.7, base: 46.0 },
-  { id: 'hajipur', name: 'Hajipur', river: 'Gandak', lat: 25.69, lon: 85.22, danger: 50.3, base: 48.7 },
-]
+const st = (id: string, base: number): Stn => {
+  const r = ref(id)
+  return { id, name: r.name, river: r.river, lat: r.lat, lon: r.lon, danger: r.danger, base }
+}
+
+export const STATIONS: Stn[] = [st('gandhighat', 46.9), st('hathidah', 40.2), st('kursela', 28.4), st('baltara', 32.25), st('basua', 46.0), st('hajipur', 48.7)]
 
 /**
  * Deterministic simulated level for a station at time t (ms): a slow monsoon swell plus a
