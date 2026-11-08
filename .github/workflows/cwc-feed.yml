@@ -1,0 +1,50 @@
+name: cwc-feed
+
+# Reads the Central Water Commission's daily flood bulletin and keeps data/cwc-latest.json up to date.
+# The bulletin lists only the sites at or above their warning level and is issued once a day.
+on:
+  schedule:
+    - cron: '30 12 * * *' # 18:00 India time
+    - cron: '30 16 * * *' # 22:00 India time, in case the bulletin was late
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cwc-feed
+  cancel-in-progress: false
+
+jobs:
+  feed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pdfplumber
+      - name: Find the newest bulletin
+        id: get
+        run: |
+          if python3 scripts/cwc_fetch.py --out bulletin.pdf; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No CWC bulletin found; data/cwc-latest.json left as it was."
+          fi
+      - name: Read it
+        if: steps.get.outputs.found == 'true'
+        run: python3 scripts/cwc_bulletin.py bulletin.pdf --out data/cwc-latest.json --meta data/cwc-latest.meta.json
+      - name: Commit if it changed
+        if: steps.get.outputs.found == 'true'
+        run: |
+          if git diff --quiet -- data; then
+            echo "No change."
+          else
+            git config user.name "cwc-feed"
+            git config user.email "cwc-feed@users.noreply.github.com"
+            git add data
+            git commit -m "Update river levels from the CWC bulletin"
+            git push
+          fi

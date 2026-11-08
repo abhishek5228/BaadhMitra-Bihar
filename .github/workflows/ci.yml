@@ -64,4 +64,8 @@ jobs:
       - run: cd go && go vet ./... && go test ./...
       - run: cd rust && cargo test
       - run: javac -d /tmp/jc java/*.java && java -cp /tmp/jc Verify conformance/vectors.tsv
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pdfplumber
       - run: cd python && python3 -m unittest discover -s tests -t .
