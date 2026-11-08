@@ -5,7 +5,7 @@ const db = new Map<string, Record<string, unknown>>()
 const sent: string[] = []
 const pub: string[] = []
 const subs: string[] = []
-const flaky = { sns: false }
+const flaky = { sns: false, sqs: 0, put: 0 }
 
 // Mock at the SDK client level (not the helper module) so helpers inside backend/lib/aws.ts
 // such as getInc, putInc and bump also hit the fake.
@@ -20,6 +20,10 @@ const fake = {
     const n = cmd.constructor.name
     const i = cmd.input
     if (n === 'PutCommand') {
+      if (i.Item.pk.startsWith('R#') && flaky.put > 0) {
+        flaky.put--
+        throw Object.assign(new Error('ddb throttled'), { name: 'ProvisionedThroughputExceededException' })
+      }
       const k = key(i.Item)
       const old = db.get(k)
       const c = i.ConditionExpression as string | undefined
@@ -28,6 +32,10 @@ const fake = {
         if (lost) throw Object.assign(new Error('cond'), { name: 'ConditionalCheckFailedException' })
       }
       db.set(k, structuredClone(i.Item))
+      return {}
+    }
+    if (n === 'DeleteCommand') {
+      db.delete(key(i.Key))
       return {}
     }
     if (n === 'GetCommand') return { Item: db.get(key(i.Key)) }
@@ -51,6 +59,10 @@ const fake = {
       return { Items: rows.slice(0, i.Limit ?? 50) }
     }
     if (n === 'SendMessageCommand') {
+      if (flaky.sqs > 0) {
+        flaky.sqs--
+        throw Object.assign(new Error('sqs down'), { name: 'ServiceUnavailable' })
+      }
       sent.push(i.MessageBody)
       return {}
     }
@@ -104,6 +116,8 @@ beforeEach(() => {
   pub.length = 0
   subs.length = 0
   flaky.sns = false
+  flaky.sqs = 0
+  flaky.put = 0
 })
 
 describe('text report -> queue -> extractor -> dispatcher API', async () => {
@@ -186,6 +200,40 @@ describe('text report -> queue -> extractor -> dispatcher API', async () => {
     expect(hist[0]).toMatchObject({ status: 'resolved', by: 'control' })
     expect((await all('control_room')).statusCode).toBe(403)
     expect((await all('viewer')).statusCode).toBe(403)
+  })
+
+  // ---- failure injection: a dependency fails halfway through a request ------------------------
+  it('a failed enqueue does not turn the sender\'s retry into a "duplicate" that is silently dropped', async () => {
+    const b = { text: 'Kursela me paani chhat par, 6 log, naav chahiye', sender: 'u1' }
+    flaky.sqs = 1
+    await expect(ing(ev('/reports', 'POST', b))).rejects.toThrow()
+    expect(sent).toHaveLength(0)
+    const again = await ing(ev('/reports', 'POST', b)) // the phone retries
+    expect(again.statusCode).toBe(202)
+    expect(JSON.parse(again.body).dup).toBeUndefined()
+    expect(sent).toHaveLength(1)
+    await drain()
+    expect(JSON.parse((await api(ev('/incidents', 'GET'))).body).items).toHaveLength(1)
+  })
+
+  it('a failed report-row write also releases the dedupe claim', async () => {
+    const b = { text: 'Supaul me paani badh raha hai, 4 log phanse', sender: 'u3' }
+    flaky.put = 1
+    await expect(ing(ev('/reports', 'POST', b))).rejects.toThrow()
+    expect((await ing(ev('/reports', 'POST', b))).statusCode).toBe(202)
+    expect(sent).toHaveLength(1)
+  })
+
+  it('an SNS outage after the incident is saved does not retry the message or double-count it', async () => {
+    const t = 'Khagaria: 25 log phanse hain, paani gardan tak, bachche aur bujurg, naav chahiye'
+    flaky.sns = true
+    for (const u of ['a', 'b', 'c']) await ing(ev('/reports', 'POST', { text: t, sender: u }))
+    const res = await drain()
+    expect(res.batchItemFailures).toEqual([]) // nothing sent back to SQS
+    const inc = JSON.parse((await api(ev('/incidents', 'GET'))).body).items[0]
+    expect(inc.raw).toBe(3) // each report counted exactly once
+    expect(inc.n).toBe(3)
+    expect(pub).toHaveLength(0)
   })
 
   it('alerts the ops topic once when an incident first crosses priority 75', async () => {

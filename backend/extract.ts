@@ -89,13 +89,17 @@ async function one(m: Msg): Promise<void> {
       if (inc.review && !old?.review) await bump('review')
       emf('IncidentScore', inc.score, 'None')
       if (inc.score >= 75 && (old?.score ?? 0) < 75 && env('TOPIC')) {
-        await sns.send(
-          new PublishCommand({
-            TopicArn: env('TOPIC'),
-            Subject: `BaadhMitra: high-priority incident near ${inc.place}`.slice(0, 99),
-            Message: `Priority ${inc.score}/100 near ${inc.place}. ${inc.n} independent reporters, up to ${inc.ppl} people at risk. Needs: ${inc.needs.join(', ') || 'unspecified'}.`,
-          }),
-        )
+        // The incident is already saved. A failed alert must not fail the message: the SQS retry
+        // would merge the same report again and inflate its count.
+        await sns
+          .send(
+            new PublishCommand({
+              TopicArn: env('TOPIC'),
+              Subject: `BaadhMitra: high-priority incident near ${inc.place}`.slice(0, 99),
+              Message: `Priority ${inc.score}/100 near ${inc.place}. ${inc.n} independent reporters, up to ${inc.ppl} people at risk. Needs: ${inc.needs.join(', ') || 'unspecified'}.`,
+            }),
+          )
+          .catch(() => emf('AlertError', 1))
       }
       return
     }

@@ -1,4 +1,4 @@
-import { PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { DeleteCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { SendMessageCommand } from '@aws-sdk/client-sqs'
 import { TBL, bump, ddb, emf, env, rid, sha, sqs } from './aws'
 import { redact } from '../../shared/redact'
@@ -71,10 +71,18 @@ export async function accept(raw: string, who: string, pin: Pin | null, now = Da
   }
 
   const msg: Msg = { id, text, who, lat: pin?.lat ?? null, lon: pin?.lon ?? null, ts: now }
-  await ddb.send(
-    new PutCommand({ TableName: TBL(), Item: { pk: 'R#' + id, sk: 'M', who, t: text, st: 'queued', ts: now, ttl: Math.floor(now / 1000) + 7 * 86400 } }),
-  )
-  await sqs.send(new SendMessageCommand({ QueueUrl: env('QURL'), MessageBody: JSON.stringify(msg) }))
+  try {
+    await ddb.send(
+      new PutCommand({ TableName: TBL(), Item: { pk: 'R#' + id, sk: 'M', who, t: text, st: 'queued', ts: now, ttl: Math.floor(now / 1000) + 7 * 86400 } }),
+    )
+    await sqs.send(new SendMessageCommand({ QueueUrl: env('QURL'), MessageBody: JSON.stringify(msg) }))
+  } catch (err) {
+    // Release the dedupe claim, otherwise the sender's retry would look like a duplicate of a
+    // report that never reached the queue and be dropped. Best effort: if this also fails the
+    // claim simply expires with its TTL.
+    await ddb.send(new DeleteCommand({ TableName: TBL(), Key: { pk: 'K#' + k, sk: 'K' } })).catch(() => emf('DedupeReleaseError', 1))
+    throw err
+  }
   await bump('reports')
   emf('ReportsIn', 1)
   return { ok: true, id }
