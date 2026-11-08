@@ -42,6 +42,10 @@ class Bulletin(unittest.TestCase):
         rows, meta = cb.parse(FIX / "2024-05-13.pdf", TABLE)
         self.assertEqual((rows, meta["stations"], meta["bulletin_date"]), ([], 0, "2024-05-13"))
 
+    def test_the_2026_layout_reads_the_same_way(self):
+        rows, meta = cb.parse(FIX / "2026-11-08.pdf", TABLE)
+        self.assertEqual((rows, meta["bulletin_no"], meta["bulletin_date"]), ([], 192, "2026-11-08"))
+
     def test_something_that_is_not_a_bulletin_is_refused(self):
         with self.assertRaises(Exception):
             cb.parse(ROOT / "README.md", TABLE)
@@ -65,6 +69,8 @@ class Bulletin(unittest.TestCase):
             self.assertEqual(cb.bihar_expected(pdf), 17)
         with pdfplumber.open(FIX / "2024-05-13.pdf") as pdf:
             self.assertEqual(cb.bihar_expected(pdf), 0)
+        with pdfplumber.open(FIX / "2026-11-08.pdf") as pdf:
+            self.assertEqual(cb.bihar_expected(pdf), 0)
 
     def test_with_several_files_the_newest_bulletin_wins_and_a_bad_file_is_skipped(self):
         paths = [FIX / "2024-05-13.pdf", FIX / "not-a-bulletin.pdf", FIX / "2024-09-03.pdf"]
@@ -72,6 +78,8 @@ class Bulletin(unittest.TestCase):
         self.assertEqual((path.name, meta["bulletin_date"], len(rows)), ("2024-09-03.pdf", "2024-09-03", 17))
         path, rows, _ = cb.newest(list(reversed(paths)), TABLE)
         self.assertEqual(path.name, "2024-09-03.pdf")
+        path, _, meta = cb.newest(paths + [FIX / "2026-11-08.pdf"], TABLE)
+        self.assertEqual((path.name, meta["bulletin_date"]), ("2026-11-08.pdf", "2026-11-08"))
 
     def test_a_wildcard_is_expanded_by_the_script_itself(self):
         import tempfile
