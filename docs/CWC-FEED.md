@@ -1,6 +1,6 @@
 # River levels from the CWC daily bulletin
 
-The Central Water Commission (CWC) publishes a flood bulletin PDF every day of the flood season. A small job in this repo reads it and keeps `data/cwc-latest.json` up to date, in the shape the gauge poller already understands. This is a **daily** source, not a live one.
+The Central Water Commission (CWC) publishes a flood bulletin PDF every day of the flood season. A small job in this repo reads the PDFs you upload and keeps `data/cwc-latest.json` up to date, in the shape the gauge poller already understands. This is a **daily** source, not a live one.
 
 ## What you get, and what you do not
 
@@ -12,32 +12,36 @@ The Central Water Commission (CWC) publishes a flood bulletin PDF every day of t
 
 ## How it runs
 
-`.github/workflows/cwc-feed.yml` runs twice a day (18:00 and 22:00 India time) and on demand:
+cwc.gov.in answers automated downloads with **HTTP 401** (tried from a GitHub runner), so the PDF is saved by a person and handed to the job:
 
-1. `scripts/cwc_fetch.py` looks for today's bulletin, then up to three earlier days. CWC has no fixed link; it tries the file names seen in past bulletins (`cfcrcwcdfbDD.MM.YYYY.pdf`, then `_0`, `_1`, ... for re-uploads) and keeps the newest. If nothing is found it leaves the file as it was and the run shows a warning.
-2. `scripts/cwc_bulletin.py` reads the tables. It checks the count of Bihar sites against the summary on page 1 and **stops with an error if they disagree** (the layout probably changed), instead of writing a quiet "all clear".
-3. If the result changed, it commits `data/cwc-latest.json` and `data/cwc-latest.meta.json`.
+1. In your browser, open the day's bulletin on cwc.gov.in and save the PDF.
+2. In the GitHub repository open the `inbox` folder: **Add file → Upload files**, drop the PDF, **Commit changes**.
+3. `.github/workflows/cwc-feed.yml` starts by itself. `scripts/cwc_bulletin.py` reads every PDF in `inbox/`, takes the **newest bulletin by date**, and writes `data/cwc-latest.json` and `data/cwc-latest.meta.json`. A file that is not a bulletin is named and skipped.
+4. It checks the count of Bihar sites against the summary on page 1 and **stops with an error if they disagree** (the layout probably changed), instead of writing a quiet "all clear".
+5. If the result changed, it commits the two data files. The poller picks it up at its next run (every 15 minutes by default).
 
-The file names are patterns, not a promise. If CWC changes them the job will find nothing; look at the Actions tab now and then. GitHub also pauses scheduled jobs on a repository with no activity for 60 days.
+One upload a day during the flood season is the whole routine. Old PDFs can stay; the newest bulletin by date always wins. A failed run shows red in the Actions tab with the reason.
+
+`scripts/cwc_fetch.py` can look for the bulletin by file-name pattern (`cfcrcwcdfbDD.MM.YYYY.pdf`, then `_0`, `_1`, ...) and refuses anything that is not a PDF. It does not work from GitHub because of the 401; it may work from your own computer: `python scripts\cwc_fetch.py --out inbox\today.pdf`. If CWC lets automated readers in, or gives a data feed, the schedule can come back; the data request in [`DATA-REQUEST.md`](DATA-REQUEST.md) is the proper route.
 
 ## Switch it on
 
 1. The repository must be **public** (the poller reads the raw file without signing in).
 2. GitHub: `Settings → Actions → General → Workflow permissions → Read and write permissions → Save`.
-3. `Actions → cwc-feed → Run workflow` once and check that `data/cwc-latest.meta.json` shows a bulletin date.
+3. Upload one bulletin to `inbox/` and check that `data/cwc-latest.meta.json` shows its date.
 4. Deploy with the file as the feed. In Windows CMD, from the project folder:
 
 ```
 npm run deploy -- -c gaugeFeedUrl=https://raw.githubusercontent.com/abhishek5228/BaadhMitra-Bihar/main/data/cwc-latest.json -c gaugeFeedPartial=true -c gaugeStaleHours=30
 ```
 
-`gaugeFeedPartial=true` tells the poller that the list only has sites in flood: an empty list is valid, and a station that is not listed today is greyed out at once instead of keeping yesterday's reading. `gaugeStaleHours=30` lets a once-a-day reading stay fresh until the next bulletin (the default is 3 hours, which would grey everything).
+`gaugeFeedPartial=true` tells the poller that the list only has sites in flood: an empty list is valid, and a station that is not listed today is greyed out at once instead of keeping yesterday's reading. `gaugeStaleHours=30` lets a once-a-day reading stay fresh until the next bulletin (the default is 3 hours, which would grey everything). If nobody uploads for more than 30 hours, every reading goes grey: that is the intended signal that the data is old.
 
 ## Check the parser yourself
 
 ```
 pip install pdfplumber
-python3 scripts/cwc_bulletin.py some-bulletin.pdf --out /tmp/out.json --meta /tmp/meta.json
+python scripts\cwc_bulletin.py inbox\*.pdf --out data\cwc-latest.json --meta data\cwc-latest.meta.json
 cd python && python3 -m unittest discover -s tests -t .
 ```
 

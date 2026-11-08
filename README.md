@@ -293,7 +293,7 @@ npm run docs:data && npm run docs:graphs # regenerate the numbers and graphs in 
 | Shift handover (`handover.test.ts`) | 9 | ranking, closed incidents left out, overdue marks, crew order, which rivers are listed, simulated marking, signature lines, place names inserted as text not markup |
 | Accuracy kit and feed adapter (`kit.test.ts`) | 12 | CSV parsing, label normalisation, confidence intervals, labeler agreement, foreign gauge feeds mapped without inventing values |
 
-The CWC bulletin reader is Python and has its own 15 tests (`python/tests/test_cwc.py`), run in CI against two real bulletins kept in `test/fixtures/cwc/`: the levels printed, the India-time observation stamp, a day with no site in flood, a refusal when the tables disagree with the summary count, file-name candidates, and a non-PDF reply never being saved.
+The CWC bulletin reader is Python and has its own 18 tests (`python/tests/test_cwc.py`), run in CI against two real bulletins kept in `test/fixtures/cwc/`: the levels printed, the India-time observation stamp, a day with no site in flood, a refusal when the tables disagree with the summary count, several files at once (newest wins, a bad one skipped), wildcards in Windows CMD, file-name candidates, and a non-PDF reply never being saved.
 
 On top of these, `npm run e2e` runs 20 Playwright browser tests against the built site in demo mode (ranked queue, search and filters, the attention panel, crew suggestions, sharing a brief, dialogs, keys, surge and the printable handover sheet; the citizen page keeping a report offline, a saved draft surviving a reload, a rate-limited send; the crew page announcing a new job and remembering the language). They run in CI and need no AWS.
 
@@ -320,7 +320,7 @@ The weakest points of this project are the ones the author cannot fix alone. The
 | [`SOP.md`](docs/SOP.md) | control-room runbook: working the queue, what to do when something breaks |
 | [`SECURITY.md`](docs/SECURITY.md) · [`PRIVACY.md`](docs/PRIVACY.md) | what is protected, known gaps, data handling notes for legal review |
 | [`WHATSAPP.md`](docs/WHATSAPP.md) | connecting the Meta WhatsApp Business webhook |
-| [`CWC-FEED.md`](docs/CWC-FEED.md) | the daily CWC bulletin as a river-level feed: what it contains, how it runs, how to switch it on |
+| [`CWC-FEED.md`](docs/CWC-FEED.md) | the daily CWC bulletin as a river-level feed: what it contains, the upload routine, how to switch it on |
 | [`DATA-REQUEST.md`](docs/DATA-REQUEST.md) | asking an agency for gauge data, then wiring the feed |
 | [`outreach/`](docs/outreach) · [`FEEDBACK.md`](docs/FEEDBACK.md) | demo request emails, feedback form, the feedback log |
 | [`PITCH.md`](docs/PITCH.md) · [`DEMO-SCRIPT.md`](docs/DEMO-SCRIPT.md) | one-page pitch and a 5-minute demo script |
@@ -346,7 +346,7 @@ docs/       pilot plan, deploy checklist, runbook, security, privacy, WhatsApp, 
 dotnet/     C# (.NET 8) port of score, SLA, distance, time-to-danger and crew ranking, plus a conformance runner
 conformance/ test vectors generated from the TypeScript (the C# port must reproduce every one)
 scripts/    deploy, village importer, load test, feed checker, CWC bulletin reader, README data and graph generators
-data/       cwc-latest.json, the river levels kept up to date by the scheduled bulletin job
+data/       cwc-latest.json, the river levels written by the bulletin job from the PDFs in inbox/
 eval/       author benchmark, plus independent/ (labeling page, protocol, scorer)
 test/       unit tests and CDK assertion tests
 ```
@@ -411,7 +411,7 @@ Each item below has its tooling built; the missing piece is a partner, not code.
 | Next proof | What is ready | What it needs from a partner |
 | --- | --- | --- |
 | **Accuracy on real messages** | the labeling page, protocol and scorer (`npm run eval:ind`) with confidence intervals | 100+ messages written and labelled by people who did not build the extractor |
-| **Real river levels** | the official station table above, a reader for the CWC daily bulletin that runs on a schedule and keeps `data/cwc-latest.json` current ([`docs/CWC-FEED.md`](docs/CWC-FEED.md)), and a config-driven adapter for any other feed | a **live** hourly feed agreed with CWC, NWIC or the state water resources department; the bulletin is daily and lists only sites at or above warning |
+| **Real river levels** | the official station table above, a reader for the CWC daily bulletin: upload the day's PDF to `inbox/` and a job updates `data/cwc-latest.json` ([`docs/CWC-FEED.md`](docs/CWC-FEED.md); CWC blocks automated downloads, so a person saves the PDF), and a config-driven adapter for any other feed | a **live** hourly feed agreed with CWC, NWIC or the state water resources department; the bulletin is daily and lists only sites at or above warning |
 | **WhatsApp intake at scale** | a signed, tested webhook | a Meta business account and approval |
 | **Village-level placement** | `npm run villages` importer | a licensed village dataset (the shipped index is empty on purpose) |
 | **SMS alerts in India** | SNS wiring | DLT registration; email alerts work today |
