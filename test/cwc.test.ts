@@ -2,8 +2,31 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { CWC_BIHAR, ref, stationTable } from '../shared/cwc'
 import { STATIONS } from '../shared/stations'
-import { adapt, normalize, type FeedMap } from '../backend/lib/feed'
+import { adapt, isStale, normalize, type FeedMap } from '../backend/lib/feed'
 import { gstate } from '../shared/alert'
+
+describe('the daily bulletin feed file', () => {
+  const golden = JSON.parse(readFileSync('test/fixtures/cwc/2024-09-03.expected.json', 'utf8')) as unknown[]
+  it('is what the poller accepts: 17 Bihar stations, none dropped, none marked simulated', () => {
+    const { rows, dropped } = normalize(golden)
+    expect(dropped).toBe(0)
+    expect(rows).toHaveLength(17)
+    expect(rows.every((r) => r.sim === false && r.ts === 1725352200000)).toBe(true)
+  })
+  it('carries the states the bulletin printed: Baltara, Benibad and Dumariaghat above danger, Basua only above warning', () => {
+    const by = Object.fromEntries(normalize(golden).rows.map((r) => [r.id, r]))
+    expect(gstate(by.baltara.lvl, by.baltara.danger)).toBe('danger')
+    expect(gstate(by.benibad.lvl, by.benibad.danger)).toBe('danger')
+    expect(gstate(by.dumariaghat.lvl, by.dumariaghat.danger)).toBe('danger')
+    expect(gstate(by.basua.lvl, by.basua.danger)).toBe('warn')
+  })
+  it('is stale after a day for the default 3 h window and fresh for a 30 h one', () => {
+    const ts = 1725352200000
+    expect(isStale(ts, ts + 20 * 3600_000)).toBe(true)
+    expect(isStale(ts, ts + 20 * 3600_000, 30 * 3600_000)).toBe(false)
+    expect(isStale(ts, ts + 31 * 3600_000, 30 * 3600_000)).toBe(true)
+  })
+})
 
 describe('official CWC reference levels', () => {
   it('lists each station once, with plausible marks', () => {
