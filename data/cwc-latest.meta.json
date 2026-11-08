@@ -1,3 +1,7 @@
 {
- "note": "No bulletin has been read yet. The cwc-feed workflow fills this in."
+ "bulletin_date": "2026-11-08",
+ "bulletin_no": 192,
+ "stations": 0,
+ "skipped": [],
+ "warnings": []
 }
