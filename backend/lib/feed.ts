@@ -58,7 +58,8 @@ export function normalize(js: unknown): { rows: Rd[]; dropped: number } {
 }
 
 /** True when the reading is too old to trust for a warning. */
-export const isStale = (ts: number | null, now: number): boolean => ts !== null && now - ts > STALE_MS
+/** `ms` is how old a reading may be: 3 h by default, much longer for a feed that is only issued once a day. */
+export const isStale = (ts: number | null, now: number, ms: number = STALE_MS): boolean => ts !== null && now - ts > ms
 
 /** Where each value lives in a source feed. Paths are dotted, e.g. "data.0.level". */
 export interface FeedMap {

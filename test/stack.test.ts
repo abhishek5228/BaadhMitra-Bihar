@@ -8,6 +8,12 @@ const app = new cdk.App({ context: { 'aws:cdk:bundling-stacks': [] } })
 const t = Template.fromStack(new BaadhMitraStack(app, 'T', { env: { account: '111111111111', region: 'ap-south-1' } }))
 
 describe('infrastructure guarantees', () => {
+  it('passes the bulletin-feed settings to the gauge poller, and is off by default', () => {
+    const on = new cdk.App({ context: { 'aws:cdk:bundling-stacks': [], gaugeFeedUrl: 'https://example.gov/g.json', gaugeFeedPartial: 'true', gaugeStaleHours: '30' } })
+    const m = Template.fromStack(new BaadhMitraStack(on, 'P', { env: { account: '111111111111', region: 'ap-south-1' } }))
+    m.hasResourceProperties('AWS::Lambda::Function', { Environment: { Variables: Match.objectLike({ FEED_PARTIAL: 'true', FEED_STALE_H: '30' }) } })
+    t.hasResourceProperties('AWS::Lambda::Function', { Environment: { Variables: Match.objectLike({ FEED_PARTIAL: '', FEED_STALE_H: '' }) } })
+  })
   it('has a dead-letter queue wired with 3 receives', () => {
     t.hasResourceProperties('AWS::SQS::Queue', { RedrivePolicy: Match.objectLike({ maxReceiveCount: 3 }) })
   })

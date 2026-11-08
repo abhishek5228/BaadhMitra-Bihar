@@ -58,6 +58,8 @@ beforeEach(() => {
   pub.length = 0
   polly.fail = false
   delete process.env.FEED
+  delete process.env.FEED_PARTIAL
+  delete process.env.FEED_STALE_H
   vi.useFakeTimers()
   vi.setSystemTime(T0)
 })
@@ -178,5 +180,58 @@ describe('gauge poller', async () => {
     feed([row(49.5), { id: 'bad', lvl: 'x', danger: 50 }, row(900, { id: 'wild' })])
     await run()
     expect(gauges().map((g) => g.id)).toEqual(['st1'])
+  })
+  it('a bulletin-style feed (partial): an empty list is valid and greys what is no longer listed', async () => {
+    process.env.FEED = 'https://feed.test/x'
+    process.env.FEED_PARTIAL = 'true'
+    feed([row(49.5), row(40, { id: 'st2', name: 'Other Ghat' })])
+    await run()
+    vi.setSystemTime(T0 + HOUR)
+    feed([row(49.6)]) // st2 is not listed any more
+    await run()
+    const by = Object.fromEntries(gauges().map((g) => [g.id, g]))
+    expect(by.st1.stale).toBeFalsy()
+    expect(by.st2.stale).toBe(true)
+    vi.setSystemTime(T0 + 2 * HOUR)
+    feed([]) // nothing above warning today
+    await run()
+    expect(gauges().every((g) => g.stale === true)).toBe(true)
+    expect(pub.length).toBe(0)
+  })
+
+  it('without the partial setting, a station missing from the list is left alone', async () => {
+    process.env.FEED = 'https://feed.test/x'
+    feed([row(49.5), row(40, { id: 'st2', name: 'Other Ghat' })])
+    await run()
+    vi.setSystemTime(T0 + HOUR)
+    feed([row(49.6)])
+    await run()
+    expect(gauges().find((g) => g.id === 'st2')?.stale).toBeFalsy()
+  })
+
+  it('a daily feed can set how old a reading may be: 30 h is fresh, 40 h is stale, and the default is 3 h', async () => {
+    process.env.FEED = 'https://feed.test/x'
+    process.env.FEED_STALE_H = '30'
+    feed([row(48, { ts: T0 - 20 * HOUR })])
+    await run()
+    expect(gauges()[0].stale).toBe(false)
+    feed([row(48, { ts: T0 - 40 * HOUR })])
+    await run()
+    expect(gauges()[0].stale).toBe(true)
+    delete process.env.FEED_STALE_H
+    feed([row(48, { ts: T0 - 20 * HOUR })])
+    await run()
+    expect(gauges()[0].stale).toBe(true)
+  })
+
+  it('a nonsense stale setting falls back to 3 h', async () => {
+    process.env.FEED = 'https://feed.test/x'
+    process.env.FEED_STALE_H = 'abc'
+    feed([row(48, { ts: T0 - 2 * HOUR })])
+    await run()
+    expect(gauges()[0].stale).toBe(false)
+    feed([row(48, { ts: T0 - 4 * HOUR })])
+    await run()
+    expect(gauges()[0].stale).toBe(true)
   })
 })

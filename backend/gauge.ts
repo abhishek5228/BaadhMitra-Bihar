@@ -4,7 +4,7 @@ import { PollyClient, SynthesizeSpeechCommand } from '@aws-sdk/client-polly'
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { TBL, ddb, emf, env, listGauges, pad, rid, s3, sns } from './lib/aws'
 import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager'
-import { adapt, authHeaders, isStale, normalize, parseMap, type Rd } from './lib/feed'
+import { STALE_MS, adapt, authHeaders, isStale, normalize, parseMap, type Rd } from './lib/feed'
 import { STATIONS, simlvl } from '../shared/stations'
 import { atext, grank, gstate } from '../shared/alert'
 import type { Alert, Gauge } from '../shared/types'
@@ -29,7 +29,17 @@ async function creds(): Promise<Record<string, string>> {
  * With NO feed configured the simulator runs and every reading is flagged `sim`.
  * With a feed configured, the simulator is never used: if the feed is down the last real readings
  * are kept but marked stale, because a made-up number must never replace an official one.
+ *
+ * FEED_PARTIAL=true is for a feed that lists only the sites in flood (a daily bulletin): an empty list is then a
+ * valid answer ("none above warning"), and a station that is not listed this time is greyed out at once instead of
+ * keeping yesterday's reading. FEED_STALE_H sets how old a reading may be (default 3 h; a daily feed needs about 30).
  */
+const partial = (): boolean => env('FEED_PARTIAL') === 'true'
+const staleMs = (): number => {
+  const h = Number(env('FEED_STALE_H'))
+  return Number.isFinite(h) && h > 0 ? h * 3600_000 : STALE_MS
+}
+
 async function readings(now: number): Promise<{ rows: Rd[]; down: boolean }> {
   const url = env('FEED')
   if (!url) return { rows: STATIONS.map((s) => ({ id: s.id, name: s.name, river: s.river, lat: s.lat, lon: s.lon, danger: s.danger, lvl: simlvl(s, now), ts: now, sim: true })), down: false }
@@ -37,6 +47,7 @@ async function readings(now: number): Promise<{ rows: Rd[]; down: boolean }> {
     const r = await fetch(url, { headers: await creds(), signal: AbortSignal.timeout(8000) })
     if (r.ok) {
       const raw: unknown = await r.json()
+      if (partial() && Array.isArray(raw) && raw.length === 0 && !env('FEED_MAP')) return { rows: [], down: false }
       const map = parseMap(env('FEED_MAP'))
       const { rows, dropped } = normalize(map ? adapt(raw, map) : raw)
       if (dropped) emf('FeedDropped', dropped)
@@ -104,13 +115,20 @@ export const handler = async (): Promise<void> => {
       trend: prev ? Math.round(((r.lvl - prev.lvl) / hrs) * 100) / 100 : 0,
       ts: r.ts ?? now,
       sim: r.sim,
-      stale: isStale(r.ts, now),
+      stale: isStale(r.ts, now, staleMs()),
     }
     await ddb.send(new PutCommand({ TableName: TBL(), Item: { ...key, g1p: 'GAUGE', g1s: r.id, g } }))
     await ddb.send(new PutCommand({ TableName: TBL(), Item: { pk: 'G#' + r.id, sk: 'H#' + pad(now / 1000, 12), lvl: r.lvl, ttl: Math.floor(now / 1000) + 30 * 86400 } }))
     // A real warning needs a rising river; a simulated one just needs to cross the line (it is a demo).
     const rising = !g.stale && (g.trend > 0 || g.sim)
     if (grank[g.state] > grank[prev?.state ?? 'normal'] && rising) await raise(g, now)
+  }
+  if (partial()) {
+    // Not listed this time means not in flood (or not reported): grey the old reading rather than let it stand.
+    const seen = new Set(rows.map((r) => r.id))
+    for (const g of await listGauges()) {
+      if (!seen.has(g.id) && !g.stale) await ddb.send(new PutCommand({ TableName: TBL(), Item: { pk: 'G#' + g.id, sk: 'L', g1p: 'GAUGE', g1s: g.id, g: { ...g, stale: true } } }))
+    }
   }
   emf('GaugePolls', 1)
 }

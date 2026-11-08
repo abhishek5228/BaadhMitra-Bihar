@@ -38,6 +38,9 @@ export class BaadhMitraStack extends cdk.Stack {
     const mapFile: string = this.node.tryGetContext('gaugeFeedMapFile') ?? ''
     const mapText: string = mapFile ? readFileSync(path.resolve(mapFile), 'utf-8') : (this.node.tryGetContext('gaugeFeedMap') ?? '')
     const feedMap: string = mapText ? JSON.stringify(JSON.parse(mapText)) : '' // fails the deploy early on invalid JSON
+    // A feed that lists only the sites in flood, issued once a day (the CWC bulletin): see backend/gauge.ts.
+    const partial = String(this.node.tryGetContext('gaugeFeedPartial') ?? 'false') === 'true'
+    const staleH = String(this.node.tryGetContext('gaugeStaleHours') ?? '')
     const rps = Number(this.node.tryGetContext('reportRps') ?? 10) // citizen intake throughput; raise for a real flood
     // Browser origin allowed to call the API and upload audio. '*' keeps the demo working anywhere; for a pilot pass the dashboard origin: -c corsOrigin=https://xxxx.cloudfront.net
     const origin: string = this.node.tryGetContext('corsOrigin') ?? '*'
@@ -125,7 +128,7 @@ export class BaadhMitraStack extends cdk.Stack {
           secretStringValue: cdk.SecretValue.unsafePlainText(JSON.stringify({ header: '', value: '' })),
         })
       : undefined
-    const env = { TBL: tbl.tableName, QURL: que.queueUrl, Q_ARN: que.queueArn, DLQ_ARN: dlq.queueArn, BKT: bkt.bucketName, TOPIC: top.topicArn, MODEL: model, FEED: feed, FEED_MAP: feedMap, FEED_AUTH: feedKey?.secretArn ?? '', CORS_ORIGIN: origin, SALT: cdk.Fn.select(2, cdk.Fn.split('/', this.stackId)), WA_SECRET: waSecret.secretArn }
+    const env = { TBL: tbl.tableName, QURL: que.queueUrl, Q_ARN: que.queueArn, DLQ_ARN: dlq.queueArn, BKT: bkt.bucketName, TOPIC: top.topicArn, MODEL: model, FEED: feed, FEED_MAP: feedMap, FEED_PARTIAL: partial ? 'true' : '', FEED_STALE_H: staleH, FEED_AUTH: feedKey?.secretArn ?? '', CORS_ORIGIN: origin, SALT: cdk.Fn.select(2, cdk.Fn.split('/', this.stackId)), WA_SECRET: waSecret.secretArn }
     const fn = (name: string, entry: string, handler: string, o: { mem?: number; secs?: number } = {}) =>
       new NodejsFunction(this, name, {
         entry: path.join(ROOT, 'backend', entry),
