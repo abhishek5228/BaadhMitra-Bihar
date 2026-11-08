@@ -1,6 +1,6 @@
 import { DeleteCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { SendMessageCommand } from '@aws-sdk/client-sqs'
-import { TBL, bump, ddb, emf, env, rid, sha, sqs } from './aws'
+import { TBL, bump, ddb, emf, need, rid, sha, sqs } from './aws'
 import { redact } from '../../shared/redact'
 
 /** Message that travels through SQS to the extractor. Text is already redacted. */
@@ -75,7 +75,7 @@ export async function accept(raw: string, who: string, pin: Pin | null, now = Da
     await ddb.send(
       new PutCommand({ TableName: TBL(), Item: { pk: 'R#' + id, sk: 'M', who, t: text, st: 'queued', ts: now, ttl: Math.floor(now / 1000) + 7 * 86400 } }),
     )
-    await sqs.send(new SendMessageCommand({ QueueUrl: env('QURL'), MessageBody: JSON.stringify(msg) }))
+    await sqs.send(new SendMessageCommand({ QueueUrl: need('QURL'), MessageBody: JSON.stringify(msg) }))
   } catch (err) {
     // Release the dedupe claim, otherwise the sender's retry would look like a duplicate of a
     // report that never reached the queue and be dropped. Best effort: if this also fails the

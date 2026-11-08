@@ -44,6 +44,7 @@ export class BaadhMitraStack extends cdk.Stack {
     const rps = Number(this.node.tryGetContext('reportRps') ?? 10) // citizen intake throughput; raise for a real flood
     // Browser origin allowed to call the API and upload audio. '*' keeps the demo working anywhere; for a pilot pass the dashboard origin: -c corsOrigin=https://xxxx.cloudfront.net
     const origin: string = this.node.tryGetContext('corsOrigin') ?? '*'
+    if (origin === '*') cdk.Annotations.of(this).addWarning('CORS allows any origin (demo default). For a pilot deploy with -c corsOrigin=https://<dashboard-domain>')
     const useWaf = String(this.node.tryGetContext('waf') ?? 'false') === 'true'
 
     // ---------------------------------------------------------------- data

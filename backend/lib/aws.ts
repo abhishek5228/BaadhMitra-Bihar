@@ -16,7 +16,14 @@ export const sqs = new SQSClient({})
 export const s3 = new S3Client({})
 export const sns = new SNSClient({})
 
-export const TBL = () => env('TBL')
+/** Required setting: a missing value fails loudly at first use instead of writing to a table named "". */
+export const need = (k: string): string => {
+  const v = process.env[k]
+  if (!v) throw new Error(`missing required environment variable ${k}`)
+  return v
+}
+
+export const TBL = () => need('TBL')
 
 export const sha = (s: string): string => createHash('sha256').update(s).digest('hex').slice(0, 24)
 

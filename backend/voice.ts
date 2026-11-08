@@ -3,7 +3,7 @@ import { StartTranscriptionJobCommand, TranscribeClient } from '@aws-sdk/client-
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { SendMessageCommand } from '@aws-sdk/client-sqs'
-import { TBL, bump, ddb, emf, env, s3, sqs } from './lib/aws'
+import { TBL, bump, ddb, emf, env, need, s3, sqs } from './lib/aws'
 import { redact } from '../shared/redact'
 import type { Msg } from './ingest'
 
@@ -80,7 +80,7 @@ export const onDone = async (e: EventBridgeEvent<'Transcribe Job State Change', 
   }
 
   const msg: Msg = { id, text, who: meta.who as string, lat: (meta.lat as number | null) ?? null, lon: (meta.lon as number | null) ?? null, ts: Date.now() }
-  await sqs.send(new SendMessageCommand({ QueueUrl: env('QURL'), MessageBody: JSON.stringify(msg) }))
+  await sqs.send(new SendMessageCommand({ QueueUrl: need('QURL'), MessageBody: JSON.stringify(msg) }))
   await bump('reports')
   emf('VoiceTranscribed', 1)
 }

@@ -15,7 +15,7 @@
     "eval:ind": "tsx eval/score.ts",
     "e2e": "playwright test",
     "vectors": "tsx scripts/vectors.ts",
-    "coverage": "vitest run --coverage --coverage.include=shared/** --coverage.include=backend/** --coverage.reporter=text-summary --coverage.reporter=text",
+    "coverage": "vitest run --coverage --coverage.reporter=text-summary --coverage.reporter=text",
     "feed:check": "tsx scripts/feed-check.ts",
     "villages": "tsx scripts/villages.ts",
     "loadtest": "tsx scripts/loadtest.ts",

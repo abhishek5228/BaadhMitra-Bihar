@@ -454,3 +454,17 @@ describe('text report -> queue -> extractor -> dispatcher API', async () => {
     expect(ex[0].texts.join(' ')).not.toMatch(/\d{10}/)
   })
 })
+
+describe('required configuration', () => {
+  it('a missing table or queue setting fails loudly instead of using an empty name', async () => {
+    const { TBL, need } = await import('../backend/lib/aws')
+    const keep = process.env.TBL
+    delete process.env.TBL
+    try {
+      expect(() => TBL()).toThrow(/missing required environment variable TBL/)
+      expect(() => need('NOPE_NOT_SET')).toThrow(/NOPE_NOT_SET/)
+    } finally {
+      process.env.TBL = keep
+    }
+  })
+})
