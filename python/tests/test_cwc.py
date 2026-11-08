@@ -66,6 +66,25 @@ class Bulletin(unittest.TestCase):
         with pdfplumber.open(FIX / "2024-05-13.pdf") as pdf:
             self.assertEqual(cb.bihar_expected(pdf), 0)
 
+    def test_with_several_files_the_newest_bulletin_wins_and_a_bad_file_is_skipped(self):
+        paths = [FIX / "2024-05-13.pdf", FIX / "not-a-bulletin.pdf", FIX / "2024-09-03.pdf"]
+        path, rows, meta = cb.newest(paths, TABLE)
+        self.assertEqual((path.name, meta["bulletin_date"], len(rows)), ("2024-09-03.pdf", "2024-09-03", 17))
+        path, rows, _ = cb.newest(list(reversed(paths)), TABLE)
+        self.assertEqual(path.name, "2024-09-03.pdf")
+
+    def test_a_wildcard_is_expanded_by_the_script_itself(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "o.json"
+            self.assertEqual(cb.main([str(FIX / "2024-0*.pdf"), "--table", str(TABLE), "--out", str(out)]), 0)
+            self.assertEqual(len(json.loads(out.read_text())), 17)
+
+    def test_it_fails_when_no_file_is_a_bulletin(self):
+        with self.assertRaises(ValueError):
+            cb.newest([FIX / "not-a-bulletin.pdf"], TABLE)
+
     def test_station_names_match_without_punctuation_or_case(self):
         self.assertEqual(cb.norm("Gandhighat, Patna".split(",")[0]), cb.norm(" GANDHIGHAT "))
 

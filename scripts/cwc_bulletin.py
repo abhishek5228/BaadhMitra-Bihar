@@ -11,6 +11,7 @@ What the bulletin is, and is not:
     bulletin has none. Other stations are counted in `skipped`, never guessed.
 """
 import argparse
+import glob
 import json
 import re
 import sys
@@ -117,18 +118,36 @@ def parse(path, table_path):
     return rows, meta
 
 
+def newest(paths, table_path):
+    """Read every PDF and return (path, rows, meta) of the newest bulletin by date, then number. Files that are not bulletins are named and skipped."""
+    best = None
+    for p in sorted(paths):
+        try:
+            rows, meta = parse(p, table_path)
+        except Exception as e:  # not a bulletin, or the layout changed: say which file and carry on with the others
+            print(f"skipped {p}: {e}", file=sys.stderr)
+            continue
+        key = (meta["bulletin_date"], meta["bulletin_no"] or 0)
+        if best is None or key >= best[0]:
+            best = (key, p, rows, meta)
+    if best is None:
+        raise ValueError("none of the PDFs could be read as a CWC bulletin")
+    return best[1], best[2], best[3]
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("pdf")
+    ap.add_argument("pdf", nargs="+", help="one or more bulletins; the newest by date is used")
     ap.add_argument("--table", default="docs/cwc-bihar-stations.json")
     ap.add_argument("--out", required=True)
     ap.add_argument("--meta")
     a = ap.parse_args(argv)
-    rows, meta = parse(a.pdf, a.table)
+    files = [f for pat in a.pdf for f in (sorted(glob.glob(pat)) if any(c in pat for c in '*?[') else [pat])]  # Windows CMD does not expand wildcards
+    path, rows, meta = newest(files, a.table)
     Path(a.out).write_text(json.dumps(rows, indent=1) + "\n", encoding="utf-8")
     if a.meta:
         Path(a.meta).write_text(json.dumps(meta, indent=1) + "\n", encoding="utf-8")
-    print(f'bulletin {meta["bulletin_no"]} of {meta["bulletin_date"]}: {len(rows)} Bihar stations, {len(meta["skipped"])} skipped')
+    print(f'{path}: bulletin {meta["bulletin_no"]} of {meta["bulletin_date"]}: {len(rows)} Bihar stations, {len(meta["skipped"])} skipped')
     return 0
 
 
