@@ -24,14 +24,27 @@ def candidates(d):
     return [stem + ".pdf"] + [f"{stem}_{n}.pdf" for n in range(MAX_SUFFIX + 1)]
 
 
+def why(msg):
+    print("  " + msg, file=sys.stderr)
+
+
 def get(url, timeout=25):
+    """The bytes if the URL answers with a PDF, otherwise None. Says why on stderr, except for a plain 404 (a name that does not exist is normal)."""
     req = urllib.request.Request(url, headers={"User-Agent": "baadhmitra-feed (public bulletin reader)"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             body = r.read(15_000_000)
-    except (urllib.error.URLError, TimeoutError, OSError):
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            why(f"{url}: HTTP {e.code}")
         return None
-    return body if body[:5] == b"%PDF-" else None
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        why(f"{url}: {type(e).__name__} {getattr(e, 'reason', e)}")
+        return None
+    if body[:5] != b"%PDF-":
+        why(f"{url}: answered, but not a PDF ({len(body)} bytes)")
+        return None
+    return body
 
 
 def newest_for(d, fetch=get):
