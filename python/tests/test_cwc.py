@@ -95,6 +95,7 @@ class Fetch(unittest.TestCase):
         self.assertEqual(c[0], "cfcrcwcdfb03.09.2024.pdf")
         self.assertEqual(c[1], "cfcrcwcdfb03.09.2024_0.pdf")
         self.assertIn("cfcrcwcdfb03.09.2024_2.pdf", c)
+        self.assertIn("cfcrcwcdfb10-05-2025.pdf", cf.candidates(date(2025, 5, 10)))
 
     def test_the_highest_reupload_wins(self):
         have = {cf.BASE + "cfcrcwcdfb03.09.2024.pdf": b"%PDF-1 old", cf.BASE + "cfcrcwcdfb03.09.2024_2.pdf": b"%PDF-1 new"}

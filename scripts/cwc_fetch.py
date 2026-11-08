@@ -2,7 +2,7 @@
 
   python3 scripts/cwc_fetch.py --out bulletin.pdf [--date 2024-09-03] [--days 3]
 
-CWC does not publish a fixed link. Recent bulletins have been named cfcrcwcdfbDD.MM.YYYY.pdf, and when a file is
+CWC does not publish a fixed link. Past bulletins have been named cfcrcwcdfbDD.MM.YYYY.pdf (2024) or cfcrcwcdfbDD-MM-YYYY.pdf (2025), and when a file is
 uploaded again the site adds _0, _1, _2... so the highest suffix that exists is the newest upload. This tries today
 and then back through --days, and exits 3 (not 0) when nothing is found so a scheduler can tell "no bulletin" from
 "worked". The names are patterns seen in past bulletins, not a promise; if CWC changes them this finds nothing
@@ -20,8 +20,11 @@ MAX_SUFFIX = 6
 
 def candidates(d):
     """File names to try for one date, plainest first, then the re-uploads in order."""
-    stem = f"cfcrcwcdfb{d.day:02d}.{d.month:02d}.{d.year}"
-    return [stem + ".pdf"] + [f"{stem}_{n}.pdf" for n in range(MAX_SUFFIX + 1)]
+    out = []
+    for sep in (".", "-"):  # 2024 bulletins use dots, a 2025 one uses dashes
+        stem = f"cfcrcwcdfb{d.day:02d}{sep}{d.month:02d}{sep}{d.year}"
+        out += [stem + ".pdf"] + [f"{stem}_{n}.pdf" for n in range(MAX_SUFFIX + 1)]
+    return out
 
 
 def why(msg):

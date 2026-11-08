@@ -14,7 +14,9 @@ The Central Water Commission (CWC) publishes a flood bulletin PDF every day of t
 
 cwc.gov.in answers automated downloads with **HTTP 401** (tried from a GitHub runner), so the PDF is saved by a person and handed to the job:
 
-1. In your browser, open the day's bulletin on cwc.gov.in and save the PDF.
+1. Get the day's bulletin PDF in your browser. Two places (file names do not matter, the date is read from inside the PDF):
+   - **CWC's flood-forecast account on X, `@CWCOfficial_FF`**, posts "Daily Flood Bulletin issued by CFCR dated DD-MM-YYYY" every day with a Google Drive link to `CFCR_CWC_DFB_DD.MM.YYYY.pdf`. Open the link and download the file. It was still being posted in November 2026.
+   - **cwc.gov.in**, page `https://cwc.gov.in/en/daily-flood-bulletin-report-dated-DDMMYYYY` (for example `...-dated-10052025`), which lists the PDF to click.
 2. In the GitHub repository open the `inbox` folder: **Add file → Upload files**, drop the PDF, **Commit changes**.
 3. `.github/workflows/cwc-feed.yml` starts by itself. `scripts/cwc_bulletin.py` reads every PDF in `inbox/`, takes the **newest bulletin by date**, and writes `data/cwc-latest.json` and `data/cwc-latest.meta.json`. A file that is not a bulletin is named and skipped.
 4. It checks the count of Bihar sites against the summary on page 1 and **stops with an error if they disagree** (the layout probably changed), instead of writing a quiet "all clear".
