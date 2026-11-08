@@ -1,24 +1,13 @@
 name: cwc-feed
 
-# Reads the Central Water Commission's daily flood bulletin and keeps data/cwc-latest.json up to date.
-# The bulletin lists only the sites at or above their warning level and is issued once a day.
+# Turns the CWC daily flood bulletin PDFs you put in inbox/ into data/cwc-latest.json, the river-level file the
+# gauge poller reads. cwc.gov.in answers automated downloads with HTTP 401, so the PDF is saved from a browser and
+# uploaded to inbox/ (GitHub: Add file > Upload files). The newest bulletin by date wins.
 on:
-  schedule:
-    - cron: '30 12 * * *' # 18:00 India time
-    - cron: '30 16 * * *' # 22:00 India time, in case the bulletin was late
+  push:
+    paths:
+      - 'inbox/*.pdf'
   workflow_dispatch:
-    inputs:
-      date:
-        description: 'Bulletin date YYYY-MM-DD (default: today, India)'
-        required: false
-      days:
-        description: 'How many earlier days to try'
-        required: false
-        default: '3'
-      commit:
-        description: 'Commit the result (set false to only try it)'
-        required: false
-        default: 'true'
 
 permissions:
   contents: write
@@ -36,23 +25,11 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install pdfplumber
-      - name: Find the newest bulletin
-        id: get
-        run: |
-          if python3 scripts/cwc_fetch.py --out bulletin.pdf ${{ inputs.date && format('--date {0}', inputs.date) || '' }} --days ${{ inputs.days || '3' }}; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::No CWC bulletin found; data/cwc-latest.json left as it was."
-          fi
-      - name: Read it
-        if: steps.get.outputs.found == 'true'
-        run: python3 scripts/cwc_bulletin.py bulletin.pdf --out data/cwc-latest.json --meta data/cwc-latest.meta.json
+      - name: Read the newest bulletin in inbox/
+        run: python3 scripts/cwc_bulletin.py inbox/*.pdf --out data/cwc-latest.json --meta data/cwc-latest.meta.json
       - name: Show what was read
-        if: steps.get.outputs.found == 'true'
         run: cat data/cwc-latest.meta.json
       - name: Commit if it changed
-        if: steps.get.outputs.found == 'true' && inputs.commit != 'false'
         run: |
           if git diff --quiet -- data; then
             echo "No change."
@@ -61,5 +38,6 @@ jobs:
             git config user.email "cwc-feed@users.noreply.github.com"
             git add data
             git commit -m "Update river levels from the CWC bulletin"
+            git pull --rebase
             git push
           fi
