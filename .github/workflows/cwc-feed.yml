@@ -7,6 +7,18 @@ on:
     - cron: '30 12 * * *' # 18:00 India time
     - cron: '30 16 * * *' # 22:00 India time, in case the bulletin was late
   workflow_dispatch:
+    inputs:
+      date:
+        description: 'Bulletin date YYYY-MM-DD (default: today, India)'
+        required: false
+      days:
+        description: 'How many earlier days to try'
+        required: false
+        default: '3'
+      commit:
+        description: 'Commit the result (set false to only try it)'
+        required: false
+        default: 'true'
 
 permissions:
   contents: write
@@ -27,7 +39,7 @@ jobs:
       - name: Find the newest bulletin
         id: get
         run: |
-          if python3 scripts/cwc_fetch.py --out bulletin.pdf; then
+          if python3 scripts/cwc_fetch.py --out bulletin.pdf ${{ inputs.date && format('--date {0}', inputs.date) || '' }} --days ${{ inputs.days || '3' }}; then
             echo "found=true" >> "$GITHUB_OUTPUT"
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
@@ -36,8 +48,11 @@ jobs:
       - name: Read it
         if: steps.get.outputs.found == 'true'
         run: python3 scripts/cwc_bulletin.py bulletin.pdf --out data/cwc-latest.json --meta data/cwc-latest.meta.json
-      - name: Commit if it changed
+      - name: Show what was read
         if: steps.get.outputs.found == 'true'
+        run: cat data/cwc-latest.meta.json
+      - name: Commit if it changed
+        if: steps.get.outputs.found == 'true' && inputs.commit != 'false'
         run: |
           if git diff --quiet -- data; then
             echo "No change."
